@@ -78,11 +78,11 @@ const DashboardWidget: React.FC<WidgetProps> = ({
       {trend && trendValue && (
         <View style={[
           styles.trendBadge,
-          { backgroundColor: getTrendColor() + '15' }
+          { backgroundColor: trend === 'up' ? '#7ecc91' : (trend === 'down' ? '#F44336' : '#757575') }
         ]}>
           <Text style={[
             styles.trendText,
-            { color: getTrendColor() }
+            { color: 'white' }
           ]}>
             {trend === 'up' ? '↗' : trend === 'down' ? '↘' : '→'} {trendValue}
           </Text>
