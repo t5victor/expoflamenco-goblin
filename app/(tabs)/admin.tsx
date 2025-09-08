@@ -1,75 +1,165 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useTranslation } from '@/hooks/useTranslation';
 import React, { useState } from 'react';
-import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Sidebar } from '@/components/Sidebar';
+import { LanguageDropdown } from '@/components/LanguageDropdown';
+import { SiteSelector } from '@/components/SiteSelector';
+import { Feather } from '@expo/vector-icons';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-// Mock data - will be replaced with real API calls
-const mockData = {
-  todayVisitors: 247,
-  yesterdayVisitors: 189,
-  newSubscriptions: 12,
-  totalSubscriptions: 1543,
-  monthlyRevenue: 3429,
-  activeMembers: 892,
+// Mock data that changes based on selected site
+const getSiteData = (siteId: string) => {
+  const baseData = {
+    all: {
+      todayVisitors: 24247,
+      yesterdayVisitors: 18923,
+      newSubscriptions: 127,
+      totalSubscriptions: 15438,
+      monthlyRevenue: 34290,
+      activeMembers: 8923,
+    },
+    agenda: {
+      todayVisitors: 4523,
+      yesterdayVisitors: 3891,
+      newSubscriptions: 23,
+      totalSubscriptions: 3247,
+      monthlyRevenue: 5670,
+      activeMembers: 2184,
+    },
+    espacio: {
+      todayVisitors: 3891,
+      yesterdayVisitors: 3456,
+      newSubscriptions: 18,
+      totalSubscriptions: 2891,
+      monthlyRevenue: 4230,
+      activeMembers: 1947,
+    },
+    comunidad: {
+      todayVisitors: 6234,
+      yesterdayVisitors: 5891,
+      newSubscriptions: 34,
+      totalSubscriptions: 4523,
+      monthlyRevenue: 8450,
+      activeMembers: 3201,
+    },
+    revista: {
+      todayVisitors: 3456,
+      yesterdayVisitors: 2987,
+      newSubscriptions: 15,
+      totalSubscriptions: 2156,
+      monthlyRevenue: 3890,
+      activeMembers: 1543,
+    },
+    academia: {
+      todayVisitors: 2891,
+      yesterdayVisitors: 2456,
+      newSubscriptions: 21,
+      totalSubscriptions: 1893,
+      monthlyRevenue: 6750,
+      activeMembers: 1289,
+    },
+    podcast: {
+      todayVisitors: 1567,
+      yesterdayVisitors: 1234,
+      newSubscriptions: 8,
+      totalSubscriptions: 967,
+      monthlyRevenue: 2340,
+      activeMembers: 678,
+    },
+    tv: {
+      todayVisitors: 1234,
+      yesterdayVisitors: 987,
+      newSubscriptions: 6,
+      totalSubscriptions: 761,
+      monthlyRevenue: 1890,
+      activeMembers: 456,
+    },
+  };
+
+  return {
+    ...baseData[siteId as keyof typeof baseData] || baseData.all,
+    conversionRate: 3.2,
+    avgSessionTime: '4m 32s',
+    topCountries: [
+      { name: 'Spain', visits: 8429, flag: '🇪🇸' },
+      { name: 'USA', visits: 5234, flag: '🇺🇸' },
+      { name: 'France', visits: 3821, flag: '🇫🇷' }
+    ],
+    weeklyData: [
+      { day: 'Mon', visitors: 3245, revenue: 4520 },
+      { day: 'Tue', visitors: 4312, revenue: 5890 },
+      { day: 'Wed', visitors: 3878, revenue: 4230 },
+      { day: 'Thu', visitors: 5396, revenue: 7850 },
+      { day: 'Fri', visitors: 4442, revenue: 6120 },
+      { day: 'Sat', visitors: 2018, revenue: 2890 },
+      { day: 'Sun', visitors: 1756, revenue: 2590 }
+    ]
+  };
 };
 
-interface WidgetProps {
+interface MetricCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
   trend?: 'up' | 'down' | 'neutral';
   trendValue?: string;
-  color?: string;
+  icon: string;
+  size?: 'small' | 'medium' | 'large';
 }
 
-const DashboardWidget: React.FC<WidgetProps> = ({ 
+const MetricCard: React.FC<MetricCardProps> = ({ 
   title, 
   value, 
   subtitle, 
   trend, 
   trendValue, 
-  color = '#4A90E2' 
+  icon,
+  size = 'medium'
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   const getTrendColor = () => {
-    if (trend === 'up') return '#4CAF50';
-    if (trend === 'down') return '#F44336';
-    return '#757575';
+    if (trend === 'up') return '#10B981';
+    if (trend === 'down') return '#EF4444';
+    return '#6B7280';
   };
 
   return (
     <View style={[
-      styles.widget, 
+      styles.metricCard,
+      styles[`${size}Card`],
       { 
-        backgroundColor: isDark ? '#1E1E1E' : '#eeeff4',
-        borderColor: isDark ? '#333' : 'white'
+        backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+        borderColor: isDark ? '#374151' : '#E5E7EB'
       }
     ]}>
-      <View style={styles.widgetHeader}>
-        <Text style={[
-          styles.widgetTitle, 
-          { color: isDark ? '#FFFFFF' : '#333333' }
-        ]}>
-          {title}
-        </Text>
-        <View style={[styles.colorIndicator, { backgroundColor: color }]} />
+      <View style={styles.cardHeader}>
+        <View style={styles.cardTitleRow}>
+          <Feather name={icon} size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+          <Text style={[
+            styles.cardTitle, 
+            { color: isDark ? '#D1D5DB' : '#374151' }
+          ]}>
+            {title}
+          </Text>
+        </View>
       </View>
       
       <Text style={[
-        styles.widgetValue, 
-        { color: isDark ? '#FFFFFF' : '#000000' }
+        styles.cardValue, 
+        { color: isDark ? '#FFFFFF' : '#111827' }
       ]}>
         {typeof value === 'number' ? value.toLocaleString() : value}
       </Text>
       
       {subtitle && (
         <Text style={[
-          styles.widgetSubtitle, 
-          { color: isDark ? '#CCCCCC' : '#666666' }
+          styles.cardSubtitle, 
+          { color: isDark ? '#9CA3AF' : '#6B7280' }
         ]}>
           {subtitle}
         </Text>
@@ -78,13 +168,15 @@ const DashboardWidget: React.FC<WidgetProps> = ({
       {trend && trendValue && (
         <View style={[
           styles.trendBadge,
-          { backgroundColor: trend === 'up' ? '#7ecc91' : (trend === 'down' ? '#F44336' : '#757575') }
+          { backgroundColor: getTrendColor() }
         ]}>
-          <Text style={[
-            styles.trendText,
-            { color: 'white' }
-          ]}>
-            {trend === 'up' ? '↗' : trend === 'down' ? '↘' : '→'} {trendValue}
+          <Feather 
+            name={trend === 'up' ? 'trending-up' : trend === 'down' ? 'trending-down' : 'minus'} 
+            size={12} 
+            color="white" 
+          />
+          <Text style={styles.trendText}>
+            {trendValue}
           </Text>
         </View>
       )}
@@ -92,158 +184,325 @@ const DashboardWidget: React.FC<WidgetProps> = ({
   );
 };
 
-export default function AdminDashboard() {
-  const [refreshing, setRefreshing] = useState(false);
-  const [data, setData] = useState(mockData);
+const ChartCard: React.FC<{data: any}> = ({data}) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const maxValue = Math.max(...data.weeklyData.map(d => d.visitors));
+
+  return (
+    <View style={[
+      styles.chartCard,
+      { 
+        backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+        borderColor: isDark ? '#374151' : '#E5E7EB'
+      }
+    ]}>
+      <View style={styles.chartHeader}>
+        <Text style={[
+          styles.chartTitle,
+          { color: isDark ? '#FFFFFF' : '#111827' }
+        ]}>
+          Weekly Traffic Overview
+        </Text>
+        <TouchableOpacity style={styles.chartAction}>
+          <Feather name="more-horizontal" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+        </TouchableOpacity>
+      </View>
+      
+      <View style={styles.chart}>
+        {data.weeklyData.map((item, index) => (
+          <View key={index} style={styles.barContainer}>
+            <Text style={[
+              styles.barValue,
+              { color: isDark ? '#9CA3AF' : '#6B7280' }
+            ]}>
+              {(item.visitors / 1000).toFixed(1)}k
+            </Text>
+            <View 
+              style={[
+                styles.bar,
+                { 
+                  height: (item.visitors / maxValue) * 100,
+                  backgroundColor: '#3B82F6'
+                }
+              ]} 
+            />
+            <Text style={[
+              styles.barLabel,
+              { color: isDark ? '#9CA3AF' : '#6B7280' }
+            ]}>
+              {item.day}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+export default function AdminDashboard() {
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [timeFilter, setTimeFilter] = useState('30d');
+  const [selectedSite, setSelectedSite] = useState('all');
+  const colorScheme = useColorScheme();
+  const { t } = useTranslation();
+  const isDark = colorScheme === 'dark';
+  const isDesktop = screenWidth >= 768;
+  
+  // Get data based on selected site
+  const data = getSiteData(selectedSite);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    // Simulate API call
     setTimeout(() => {
-      setData({
-        ...mockData,
-        todayVisitors: Math.floor(Math.random() * 100) + 200,
-        newSubscriptions: Math.floor(Math.random() * 10) + 5,
-      });
+      // Simulate refresh by re-fetching data
       setRefreshing(false);
     }, 1000);
   }, []);
 
+  const timeFilters = [
+    { id: '24h', label: '24h' },
+    { id: '7d', label: '7d' },
+    { id: '30d', label: '30d' },
+    { id: '90d', label: '90d' },
+  ];
+
   return (
     <SafeAreaView style={[
       styles.container, 
-      { backgroundColor: isDark ? '#000000' : '#e7eaf1' }
+      { backgroundColor: isDark ? '#111827' : '#F9FAFB' }
     ]}>
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[
-            styles.headerTitle, 
-            { color: isDark ? '#FFFFFF' : '#000000' }
-          ]}>
-            Expoflamenco Dashboard
-          </Text>
-          <Text style={[
-            styles.headerSubtitle, 
-            { color: isDark ? '#CCCCCC' : '#666666' }
-          ]}>
-            {new Date().toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </Text>
-        </View>
+      <View style={styles.layout}>
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        
+        <View style={styles.content}>
+          <ScrollView
+            style={styles.scrollView}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.headerLeft}>
+                <Text style={[
+                  styles.headerTitle, 
+                  { color: isDark ? '#FFFFFF' : '#111827' }
+                ]}>
+                  {t('dashboard.title')}
+                </Text>
+                <Text style={[
+                  styles.headerSubtitle, 
+                  { color: isDark ? '#9CA3AF' : '#6B7280' }
+                ]}>
+                  {t('dashboard.subtitle')}
+                </Text>
+                <View style={styles.siteSection}>
+                  <SiteSelector selectedSite={selectedSite} onSiteChange={setSelectedSite} />
+                </View>
+              </View>
+              
+              <View style={styles.headerActions}>
+                <View style={styles.filterRow}>
+                  {timeFilters.map((filter) => (
+                    <TouchableOpacity
+                      key={filter.id}
+                      style={[
+                        styles.filterButton,
+                        { 
+                          backgroundColor: timeFilter === filter.id 
+                            ? '#3B82F6' 
+                            : 'transparent',
+                          borderColor: timeFilter === filter.id 
+                            ? '#3B82F6' 
+                            : (isDark ? '#374151' : '#D1D5DB')
+                        }
+                      ]}
+                      onPress={() => setTimeFilter(filter.id)}
+                    >
+                      <Text style={[
+                        styles.filterText,
+                        { 
+                          color: timeFilter === filter.id 
+                            ? '#FFFFFF'
+                            : (isDark ? '#9CA3AF' : '#6B7280')
+                        }
+                      ]}>
+                        {filter.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                
+                <View style={styles.rightActions}>
+                  <LanguageDropdown />
+                  
+                  <TouchableOpacity style={[
+                    styles.actionButton,
+                    { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }
+                  ]}>
+                    <Feather name="download" size={16} color={isDark ? '#FFFFFF' : '#374151'} />
+                    <Text style={[
+                      styles.actionButtonText,
+                      { color: isDark ? '#FFFFFF' : '#374151' }
+                    ]}>
+                      {t('export')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
 
-        {/* Main Metrics */}
-        <View style={styles.section}>
-          <Text style={[
-            styles.sectionTitle, 
-            { color: isDark ? '#FFFFFF' : '#333333' }
-          ]}>
-            Today's Overview
-          </Text>
-          
-          <View style={styles.widgetGrid}>
-            <DashboardWidget
-              title="Today's Visitors"
-              value={data.todayVisitors}
-              subtitle="Site visitors today"
-              trend="up"
-              trendValue="+30.7% vs yesterday"
-              color="#4CAF50"
-            />
-            
-            <DashboardWidget
-              title="New Subscriptions"
-              value={data.newSubscriptions}
-              subtitle="Via Paid Memberships Pro"
-              trend="up"
-              trendValue="+15.2% vs yesterday"
-              color="#2196F3"
-            />
-          </View>
-        </View>
+            {/* Main Dashboard Grid */}
+            <View style={styles.dashboardGrid}>
+              {/* Key Metrics Row */}
+              <View style={styles.metricsRow}>
+                <MetricCard
+                  title="Today's Visitors"
+                  value={data.todayVisitors}
+                  subtitle="Site traffic today"
+                  trend="up"
+                  trendValue="+12.5%"
+                  icon="eye"
+                  size="medium"
+                />
+                
+                <MetricCard
+                  title="New Subscriptions"
+                  value={data.newSubscriptions}
+                  subtitle="Paid Memberships Pro"
+                  trend="up"
+                  trendValue="+8.2%"
+                  icon="user-plus"
+                  size="medium"
+                />
+                
+                <MetricCard
+                  title="Revenue"
+                  value={`€${(data.monthlyRevenue / 1000).toFixed(1)}k`}
+                  subtitle="This month"
+                  trend="up"
+                  trendValue="+15.3%"
+                  icon="dollar-sign"
+                  size="medium"
+                />
+                
+                <MetricCard
+                  title="Conversion"
+                  value={`${data.conversionRate}%`}
+                  subtitle="Visitor to subscriber"
+                  trend="down"
+                  trendValue="-2.1%"
+                  icon="trending-up"
+                  size="medium"
+                />
+              </View>
 
-        {/* Secondary Metrics */}
-        <View style={styles.section}>
-          <Text style={[
-            styles.sectionTitle, 
-            { color: isDark ? '#FFFFFF' : '#333333' }
-          ]}>
-            Overview
-          </Text>
-          
-          <View style={styles.widgetGrid}>
-            <DashboardWidget
-              title="Total Subscriptions"
-              value={data.totalSubscriptions}
-              subtitle="All time members"
-              color="#FF9800"
-            />
-            
-            <DashboardWidget
-              title="Monthly Revenue"
-              value={`€${data.monthlyRevenue}`}
-              subtitle="This month"
-              trend="up"
-              trendValue="+8.3% vs last month"
-              color="#9C27B0"
-            />
-            
-            <DashboardWidget
-              title="Active Members"
-              value={data.activeMembers}
-              subtitle="Currently active"
-              color="#795548"
-            />
-            
-            <DashboardWidget
-              title="Yesterday's Visitors"
-              value={data.yesterdayVisitors}
-              subtitle="Previous day traffic"
-              color="#607D8B"
-            />
-          </View>
+              {/* Chart and Secondary Metrics */}
+              <View style={styles.contentRow}>
+                <View style={styles.leftColumn}>
+                  <ChartCard data={data} />
+                  
+                  <View style={styles.secondaryMetrics}>
+                    <MetricCard
+                      title="Avg. Session"
+                      value={data.avgSessionTime}
+                      icon="clock"
+                      size="small"
+                    />
+                    <MetricCard
+                      title="Active Members"
+                      value={data.activeMembers}
+                      icon="users"
+                      size="small"
+                    />
+                  </View>
+                </View>
+                
+                <View style={styles.rightColumn}>
+                  <View style={[
+                    styles.topCountriesCard,
+                    { 
+                      backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+                      borderColor: isDark ? '#374151' : '#E5E7EB'
+                    }
+                  ]}>
+                    <Text style={[
+                      styles.sideCardTitle,
+                      { color: isDark ? '#FFFFFF' : '#111827' }
+                    ]}>
+                      Top Countries
+                    </Text>
+                    {data.topCountries.map((country, index) => (
+                      <View key={index} style={styles.countryRow}>
+                        <View style={styles.countryLeft}>
+                          <Text style={styles.countryFlag}>{country.flag}</Text>
+                          <Text style={[
+                            styles.countryName,
+                            { color: isDark ? '#D1D5DB' : '#374151' }
+                          ]}>
+                            {country.name}
+                          </Text>
+                        </View>
+                        <Text style={[
+                          styles.countryVisits,
+                          { color: isDark ? '#9CA3AF' : '#6B7280' }
+                        ]}>
+                          {country.visits.toLocaleString()}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  
+                  <View style={[
+                    styles.alertsCard,
+                    { 
+                      backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+                      borderColor: isDark ? '#374151' : '#E5E7EB'
+                    }
+                  ]}>
+                    <Text style={[
+                      styles.sideCardTitle,
+                      { color: isDark ? '#FFFFFF' : '#111827' }
+                    ]}>
+                      Recent Activity
+                    </Text>
+                    <View style={styles.activityItem}>
+                      <View style={[styles.activityDot, { backgroundColor: '#10B981' }]} />
+                      <Text style={[
+                        styles.activityText,
+                        { color: isDark ? '#D1D5DB' : '#374151' }
+                      ]}>
+                        12 new subscribers in last hour
+                      </Text>
+                    </View>
+                    <View style={styles.activityItem}>
+                      <View style={[styles.activityDot, { backgroundColor: '#F59E0B' }]} />
+                      <Text style={[
+                        styles.activityText,
+                        { color: isDark ? '#D1D5DB' : '#374151' }
+                      ]}>
+                        High traffic on /courses page
+                      </Text>
+                    </View>
+                    <View style={styles.activityItem}>
+                      <View style={[styles.activityDot, { backgroundColor: '#3B82F6' }]} />
+                      <Text style={[
+                        styles.activityText,
+                        { color: isDark ? '#D1D5DB' : '#374151' }
+                      ]}>
+                        Email campaign opened by 234 users
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
         </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={[
-            styles.sectionTitle, 
-            { color: isDark ? '#FFFFFF' : '#333333' }
-          ]}>
-            Quick Actions
-          </Text>
-          
-           <View style={[
-             styles.quickActionsCard,
-             { 
-               backgroundColor: isDark ? '#1E1E1E' : '#f3f4f8',
-               borderColor: isDark ? '#333' : 'white'
-             }
-           ]}>
-            <Text style={[
-              styles.quickActionsText,
-              { color: isDark ? '#CCCCCC' : '#666666' }
-            ]}>
-              • Export today's analytics report{'\n'}
-              • View detailed subscription analytics{'\n'}
-              • Manage FluentCRM campaigns{'\n'}
-              • Access MonsterInsights detailed reports
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -252,95 +511,245 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  layout: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  content: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
   },
   header: {
-    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 24,
     paddingVertical: 20,
   },
+  headerLeft: {
+    flex: 1,
+  },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '700',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
   },
-  section: {
-    paddingHorizontal: 20,
+  siteSection: {
+    marginTop: 16,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  filterText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  dashboardGrid: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 16,
     marginBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 20,
+  contentRow: {
+    flexDirection: 'row',
+    gap: 24,
+  },
+  leftColumn: {
+    flex: 2,
+  },
+  rightColumn: {
+    flex: 1,
+    gap: 16,
+  },
+  metricCard: {
+    padding: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  mediumCard: {
+    flex: 1,
+  },
+  smallCard: {
+    minWidth: 160,
+  },
+  largeCard: {
+    flex: 2,
+  },
+  cardHeader: {
+    marginBottom: 12,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  cardValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  trendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  trendText: {
+    color: 'white',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  chartCard: {
+    padding: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  chartAction: {
+    padding: 4,
+  },
+  chart: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 120,
+    paddingTop: 20,
+  },
+  barContainer: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  bar: {
+    width: 24,
+    borderRadius: 4,
+    marginVertical: 4,
+  },
+  barLabel: {
+    fontSize: 11,
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  barValue: {
+    fontSize: 10,
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  secondaryMetrics: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  topCountriesCard: {
+    padding: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  alertsCard: {
+    padding: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  sideCardTitle: {
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 16,
   },
-  widgetGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  widget: {
-    width: screenWidth < 768 ? '100%' : '48%',
-    minWidth: screenWidth < 768 ? screenWidth - 40 : 280,
-    padding: 20,
-    borderRadius: 24,
-    borderWidth: 1,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  widgetHeader: {
+  countryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  widgetTitle: {
+  countryLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  countryFlag: {
     fontSize: 16,
+  },
+  countryName: {
+    fontSize: 13,
     fontWeight: '500',
-    flex: 1,
   },
-  colorIndicator: {
-    width: 4,
-    height: 20,
-    borderRadius: 2,
-  },
-  widgetValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  widgetSubtitle: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  trendBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginTop: 8,
-    alignSelf: 'flex-start',
-  },
-  trendText: {
+  countryVisits: {
     fontSize: 12,
     fontWeight: '600',
   },
-  quickActionsCard: {
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
   },
-  quickActionsText: {
-    fontSize: 16,
-    lineHeight: 24,
+  activityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  activityText: {
+    fontSize: 12,
+    flex: 1,
   },
 });
