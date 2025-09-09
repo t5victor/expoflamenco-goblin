@@ -22,6 +22,11 @@ interface DashboardData {
   previousWeekData: Array<{ day: string; visitors: number }>;
   topCountries: Array<{ name: string; flag: string; visits: number }>;
   timePeriod?: string;
+  comparison?: {
+    visitors: { percentage: string; trend: 'up' | 'down' | 'neutral' };
+    subscriptions: { percentage: string; trend: 'up' | 'down' | 'neutral' };
+    revenue: { percentage: string; trend: 'up' | 'down' | 'neutral' };
+  };
 }
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -149,11 +154,20 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
         {`Users subscribed (${timeFilter})`}
       </Text>
       
-      <View style={[styles.trendBadge, { backgroundColor: '#7ecc91' }]}>
-        <Text style={[styles.trendText, { color: '#FFFFFF' }]}>
-          ↗ +8.2%
-        </Text>
-      </View>
+      {data.comparison?.subscriptions && (
+        <View style={[
+          styles.trendBadge, 
+          { 
+            backgroundColor: data.comparison.subscriptions.trend === 'up' ? '#7ecc91' : 
+                           data.comparison.subscriptions.trend === 'down' ? '#ef4444' : '#6b7280'
+          }
+        ]}>
+          <Text style={[styles.trendText, { color: '#FFFFFF' }]}>
+            {data.comparison.subscriptions.trend === 'up' ? '↗' : 
+             data.comparison.subscriptions.trend === 'down' ? '↘' : '→'} {data.comparison.subscriptions.percentage}
+          </Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -483,8 +497,8 @@ export default function AdminDashboard() {
                   title={periodLabels.visitors}
                   value={data.todayVisitors}
                   subtitle={`Site traffic (${timeFilter})`}
-                  trend="up"
-                  trendValue="+12.5%"
+                  trend={data.comparison?.visitors.trend || 'neutral'}
+                  trendValue={data.comparison?.visitors.percentage || '0%'}
                   icon="eye"
                   size="medium"
                 />
@@ -503,8 +517,8 @@ export default function AdminDashboard() {
                   title={periodLabels.revenue}
                   value={`€${(data.monthlyRevenue / 1000).toFixed(1)}k`}
                   subtitle={`Revenue (${timeFilter})`}
-                  trend="up"
-                  trendValue="+15.3%"
+                  trend={data.comparison?.revenue.trend || 'neutral'}
+                  trendValue={data.comparison?.revenue.percentage || '0%'}
                   icon="dollar-sign"
                   size="medium"
                 />
