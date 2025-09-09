@@ -27,6 +27,27 @@ export const translations = {
     dashboard: 'Dashboard',
   },
   
+  // Time period labels
+  todayVisitors: "Today's Visitors",
+  todaySubscriptions: "Today's Subscriptions", 
+  todayRevenue: "Today's Revenue",
+  weeklyVisitors: "Weekly Visitors",
+  weeklySubscriptions: "Weekly Subscriptions",
+  weeklyRevenue: "Weekly Revenue",
+  monthlyVisitors: "Monthly Visitors",
+  monthlySubscriptions: "Monthly Subscriptions",
+  monthlyRevenue: "Monthly Revenue",
+  quarterlyVisitors: "Quarterly Visitors",
+  quarterlySubscriptions: "Quarterly Subscriptions", 
+  quarterlyRevenue: "Quarterly Revenue",
+  
+  // Subscription types
+  allSubscriptions: "All Subscriptions",
+  freeSubscriptions: "Free Subscriptions", 
+  paidSubscriptions: "Paid Subscriptions",
+  fanSubscriptions: "Fan (Free)",
+  vipSubscriptions: "VIP (Paid)",
+  
   // Dashboard
   dashboard: {
     title: 'Overview',
