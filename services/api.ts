@@ -5,6 +5,54 @@ const getApiBaseUrl = (siteId: string) => {
   return `https://expoflamenco.com/${siteId}/wp-json`;
 };
 
+// Simple historical data storage using localStorage for browser
+const getComparisonData = async (siteId: string, timePeriod: string, currentMetrics: any) => {
+  try {
+    const key = `historical_${siteId}_${timePeriod}`;
+    const stored = localStorage.getItem(key);
+    const previous = stored ? JSON.parse(stored) : { visitors: 0, subscriptions: 0, revenue: 0 };
+    
+    // Calculate percentage changes
+    const calculatePercentage = (current: number, prev: number) => {
+      if (prev === 0) return current > 0 ? '+100%' : '0%';
+      const change = ((current - prev) / prev) * 100;
+      return `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
+    };
+    
+    const comparison = {
+      visitors: {
+        percentage: calculatePercentage(currentMetrics.visitors, previous.visitors),
+        trend: currentMetrics.visitors > previous.visitors ? 'up' : 
+               currentMetrics.visitors < previous.visitors ? 'down' : 'neutral'
+      },
+      subscriptions: {
+        percentage: calculatePercentage(currentMetrics.subscriptions, previous.subscriptions),
+        trend: currentMetrics.subscriptions > previous.subscriptions ? 'up' : 
+               currentMetrics.subscriptions < previous.subscriptions ? 'down' : 'neutral'
+      },
+      revenue: {
+        percentage: calculatePercentage(currentMetrics.revenue, previous.revenue),
+        trend: currentMetrics.revenue > previous.revenue ? 'up' : 
+               currentMetrics.revenue < previous.revenue ? 'down' : 'neutral'
+      }
+    };
+    
+    // Store current data for next comparison
+    localStorage.setItem(key, JSON.stringify(currentMetrics));
+    
+    console.log(`📊 Comparison for ${siteId} (${timePeriod}):`, comparison);
+    return comparison;
+    
+  } catch (error) {
+    console.error('📊 Comparison error:', error);
+    return {
+      visitors: { percentage: '0%', trend: 'neutral' },
+      subscriptions: { percentage: '0%', trend: 'neutral' },
+      revenue: { percentage: '0%', trend: 'neutral' }
+    };
+  }
+};
+
 interface ApiConfig {
   headers: {
     'Authorization': string;
@@ -201,18 +249,28 @@ export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') 
       const timeMultipliers = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
       const multiplier = timeMultipliers[timePeriod as keyof typeof timeMultipliers] || 30;
       
+      const currentMetrics = {
+        visitors: aggregatedData.posts * 15 * multiplier,
+        subscriptions: aggregatedData.users * Math.ceil(multiplier / 30),
+        revenue: aggregatedData.users * 99.9 * Math.ceil(multiplier / 30)
+      };
+
+      // Get comparison data from historical storage
+      const comparison = await getComparisonData(siteId, timePeriod, currentMetrics);
+      
       const calculatedData = {
-        todayVisitors: aggregatedData.posts * 15 * multiplier,
+        todayVisitors: currentMetrics.visitors,
         yesterdayVisitors: aggregatedData.posts * 12 * multiplier,
-        newSubscriptions: aggregatedData.users * Math.ceil(multiplier / 30),
+        newSubscriptions: currentMetrics.subscriptions,
         totalSubscriptions: aggregatedData.users * 3,
-        monthlyRevenue: aggregatedData.users * 99.9 * Math.ceil(multiplier / 30),
+        monthlyRevenue: currentMetrics.revenue,
         activeMembers: aggregatedData.users * 2,
         conversionRate: 3.2,
         avgSessionTime: '4m 32s',
         weeklyData: generateWeeklyData(aggregatedData.posts, 'all'),
         previousWeekData: generatePreviousWeekData(aggregatedData.posts, 'all'),
         timePeriod,
+        comparison,
         topCountries: [
           { name: 'Spain', flag: '🇪🇸', visits: 2400 },
           { name: 'United States', flag: '🇺🇸', visits: 1800 },
@@ -271,18 +329,28 @@ export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') 
     const timeMultipliers = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
     const multiplier = timeMultipliers[timePeriod as keyof typeof timeMultipliers] || 30;
     
+    const currentMetrics = {
+      visitors: postsData.length * 15 * multiplier,
+      subscriptions: usersData.length * Math.ceil(multiplier / 30),
+      revenue: usersData.length * 99.9 * Math.ceil(multiplier / 30)
+    };
+
+    // Get comparison data from historical storage
+    const comparison = await getComparisonData(siteId, timePeriod, currentMetrics);
+    
     const calculatedData = {
-      todayVisitors: postsData.length * 15 * multiplier,
+      todayVisitors: currentMetrics.visitors,
       yesterdayVisitors: postsData.length * 12 * multiplier,
-      newSubscriptions: usersData.length * Math.ceil(multiplier / 30),
+      newSubscriptions: currentMetrics.subscriptions,
       totalSubscriptions: usersData.length * 3,
-      monthlyRevenue: usersData.length * 99.9 * Math.ceil(multiplier / 30),
+      monthlyRevenue: currentMetrics.revenue,
       activeMembers: usersData.length * 2,
       conversionRate: 3.2,
       avgSessionTime: '4m 32s',
       weeklyData: generateWeeklyData(postsData.length, siteId),
       previousWeekData: generatePreviousWeekData(postsData.length, siteId),
       timePeriod,
+      comparison,
       topCountries: [
         { name: 'Spain', flag: '🇪🇸', visits: 2400 },
         { name: 'United States', flag: '🇺🇸', visits: 1800 },
