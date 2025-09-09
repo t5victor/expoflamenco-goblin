@@ -1,102 +1,61 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useTranslation } from '@/hooks/useTranslation';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageDropdown } from '@/components/LanguageDropdown';
 import { SiteSelector } from '@/components/SiteSelector';
 import { Feather } from '@expo/vector-icons';
+import { fetchSiteData } from '@/services/api';
+
+interface DashboardData {
+  todayVisitors: number;
+  yesterdayVisitors: number;
+  newSubscriptions: number;
+  totalSubscriptions: number;
+  monthlyRevenue: number;
+  activeMembers: number;
+  conversionRate: number;
+  avgSessionTime: string;
+  weeklyData: Array<{ day: string; visitors: number }>;
+  previousWeekData: Array<{ day: string; visitors: number }>;
+  topCountries: Array<{ name: string; flag: string; visits: number }>;
+  timePeriod?: string;
+}
 
 const { width: screenWidth } = Dimensions.get('window');
 
-// Mock data that changes based on selected site
-const getSiteData = (siteId: string) => {
+// Fallback mock data for API errors
+const getFallbackData = (siteId: string): DashboardData => {
   const baseData = {
-    all: {
-      todayVisitors: 24247,
-      yesterdayVisitors: 18923,
-      newSubscriptions: 127,
-      totalSubscriptions: 15438,
-      monthlyRevenue: 34290,
-      activeMembers: 8923,
-    },
-    agenda: {
-      todayVisitors: 4523,
-      yesterdayVisitors: 3891,
-      newSubscriptions: 23,
-      totalSubscriptions: 3247,
-      monthlyRevenue: 5670,
-      activeMembers: 2184,
-    },
-    espacio: {
-      todayVisitors: 3891,
-      yesterdayVisitors: 3456,
-      newSubscriptions: 18,
-      totalSubscriptions: 2891,
-      monthlyRevenue: 4230,
-      activeMembers: 1947,
-    },
-    comunidad: {
-      todayVisitors: 6234,
-      yesterdayVisitors: 5891,
-      newSubscriptions: 34,
-      totalSubscriptions: 4523,
-      monthlyRevenue: 8450,
-      activeMembers: 3201,
-    },
-    revista: {
-      todayVisitors: 3456,
-      yesterdayVisitors: 2987,
-      newSubscriptions: 15,
-      totalSubscriptions: 2156,
-      monthlyRevenue: 3890,
-      activeMembers: 1543,
-    },
-    academia: {
-      todayVisitors: 2891,
-      yesterdayVisitors: 2456,
-      newSubscriptions: 21,
-      totalSubscriptions: 1893,
-      monthlyRevenue: 6750,
-      activeMembers: 1289,
-    },
-    podcast: {
-      todayVisitors: 1567,
-      yesterdayVisitors: 1234,
-      newSubscriptions: 8,
-      totalSubscriptions: 967,
-      monthlyRevenue: 2340,
-      activeMembers: 678,
-    },
-    tv: {
-      todayVisitors: 1234,
-      yesterdayVisitors: 987,
-      newSubscriptions: 6,
-      totalSubscriptions: 761,
-      monthlyRevenue: 1890,
-      activeMembers: 456,
-    },
+    all: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
+    agenda: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
+    espacio: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
+    comunidad: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
+    revista: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
+    academia: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
+    podcast: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
+    tv: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
   };
+
+  const fallbackWeeklyData = [
+    { day: 'Mon', visitors: 0 },
+    { day: 'Tue', visitors: 0 },
+    { day: 'Wed', visitors: 0 },
+    { day: 'Thu', visitors: 0 },
+    { day: 'Fri', visitors: 0 },
+    { day: 'Sat', visitors: 0 },
+    { day: 'Sun', visitors: 0 }
+  ];
 
   return {
     ...baseData[siteId as keyof typeof baseData] || baseData.all,
-    conversionRate: 3.2,
-    avgSessionTime: '4m 32s',
-    topCountries: [
-      { name: 'Spain', visits: 8429, flag: '🇪🇸' },
-      { name: 'USA', visits: 5234, flag: '🇺🇸' },
-      { name: 'France', visits: 3821, flag: '🇫🇷' }
-    ],
-    weeklyData: [
-      { day: 'Mon', visitors: 3245, revenue: 4520 },
-      { day: 'Tue', visitors: 4312, revenue: 5890 },
-      { day: 'Wed', visitors: 3878, revenue: 4230 },
-      { day: 'Thu', visitors: 5396, revenue: 7850 },
-      { day: 'Fri', visitors: 4442, revenue: 6120 },
-      { day: 'Sat', visitors: 2018, revenue: 2890 },
-      { day: 'Sun', visitors: 1756, revenue: 2590 }
-    ]
+    conversionRate: 0,
+    avgSessionTime: '0m 0s',
+    topCountries: [],
+    weeklyData: fallbackWeeklyData,
+    previousWeekData: fallbackWeeklyData
   };
 };
 
@@ -106,7 +65,7 @@ interface MetricCardProps {
   subtitle?: string;
   trend?: 'up' | 'down' | 'neutral';
   trendValue?: string;
-  icon: string;
+  icon: keyof typeof Feather.glyphMap;
   size?: 'small' | 'medium' | 'large';
 }
 
@@ -184,7 +143,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   );
 };
 
-const ChartCard: React.FC<{data: any}> = ({data}) => {
+const ChartCard: React.FC<{data: DashboardData}> = ({data}) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const maxValue = Math.max(...data.weeklyData.map(d => d.visitors));
@@ -240,26 +199,76 @@ const ChartCard: React.FC<{data: any}> = ({data}) => {
   );
 };
 
+// Helper function to get appropriate labels based on time period
+const getTimePeriodLabels = (timePeriod: string, t: any) => {
+  const labels = {
+    '24h': {
+      visitors: t('todayVisitors'),
+      subscriptions: t('todaySubscriptions'), 
+      revenue: t('todayRevenue')
+    },
+    '7d': {
+      visitors: t('weeklyVisitors'),
+      subscriptions: t('weeklySubscriptions'),
+      revenue: t('weeklyRevenue')  
+    },
+    '30d': {
+      visitors: t('monthlyVisitors'),
+      subscriptions: t('monthlySubscriptions'),
+      revenue: t('monthlyRevenue')
+    },
+    '90d': {
+      visitors: t('quarterlyVisitors'),
+      subscriptions: t('quarterlySubscriptions'), 
+      revenue: t('quarterlyRevenue')
+    }
+  };
+  return labels[timePeriod as keyof typeof labels] || labels['30d'];
+};
+
 export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [timeFilter, setTimeFilter] = useState('30d');
   const [selectedSite, setSelectedSite] = useState('all');
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
   const { t } = useTranslation();
   const isDark = colorScheme === 'dark';
   const isDesktop = screenWidth >= 768;
-  
-  // Get data based on selected site
-  const data = getSiteData(selectedSite);
+  const periodLabels = getTimePeriodLabels(timeFilter, t);
 
-  const onRefresh = React.useCallback(() => {
+  useEffect(() => {
+    loadSiteData();
+  }, [selectedSite, timeFilter]);
+
+  const loadSiteData = async () => {
+    try {
+      setLoading(true);
+      console.log('🚀 Fetching data for site:', selectedSite);
+      const siteData = await fetchSiteData(selectedSite, timeFilter);
+      console.log('✅ API Response:', siteData);
+      setData(siteData);
+    } catch (error) {
+      console.error('❌ API Error:', error);
+      console.error('Error details:', {
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        site: selectedSite
+      });
+      // Fallback to empty data on error
+      setData(getFallbackData(selectedSite));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      // Simulate refresh by re-fetching data
-      setRefreshing(false);
-    }, 1000);
-  }, []);
+    await loadSiteData();
+    setRefreshing(false);
+  }, [selectedSite]);
 
   const timeFilters = [
     { id: '24h', label: '24h' },
@@ -267,6 +276,21 @@ export default function AdminDashboard() {
     { id: '30d', label: '30d' },
     { id: '90d', label: '90d' },
   ];
+
+  if (loading || !data) {
+    return (
+      <SafeAreaView style={[
+        styles.container, 
+        { backgroundColor: isDark ? '#111827' : '#F9FAFB' }
+      ]}>
+        <View style={[styles.loadingContainer, { backgroundColor: isDark ? '#111827' : '#F9FAFB' }]}>
+          <Text style={[styles.loadingText, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+            {t('loading')}...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[
@@ -360,9 +384,9 @@ export default function AdminDashboard() {
               {/* Key Metrics Row */}
               <View style={styles.metricsRow}>
                 <MetricCard
-                  title="Today's Visitors"
+                  title={periodLabels.visitors}
                   value={data.todayVisitors}
-                  subtitle="Site traffic today"
+                  subtitle={`Site traffic (${timeFilter})`}
                   trend="up"
                   trendValue="+12.5%"
                   icon="eye"
@@ -370,9 +394,9 @@ export default function AdminDashboard() {
                 />
                 
                 <MetricCard
-                  title="New Subscriptions"
+                  title={periodLabels.subscriptions}
                   value={data.newSubscriptions}
-                  subtitle="Paid Memberships Pro"
+                  subtitle={`Paid Memberships Pro (${timeFilter})`}
                   trend="up"
                   trendValue="+8.2%"
                   icon="user-plus"
@@ -380,9 +404,9 @@ export default function AdminDashboard() {
                 />
                 
                 <MetricCard
-                  title="Revenue"
+                  title={periodLabels.revenue}
                   value={`€${(data.monthlyRevenue / 1000).toFixed(1)}k`}
-                  subtitle="This month"
+                  subtitle={`Revenue (${timeFilter})`}
                   trend="up"
                   trendValue="+15.3%"
                   icon="dollar-sign"
@@ -435,7 +459,7 @@ export default function AdminDashboard() {
                     ]}>
                       Top Countries
                     </Text>
-                    {data.topCountries.map((country, index) => (
+                    {data.topCountries.map((country: any, index: number) => (
                       <View key={index} style={styles.countryRow}>
                         <View style={styles.countryLeft}>
                           <Text style={styles.countryFlag}>{country.flag}</Text>
@@ -581,7 +605,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   dashboardGrid: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
     paddingBottom: 24,
   },
   metricsRow: {
@@ -602,7 +626,7 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     padding: 20,
-    borderRadius: 8,
+    borderRadius: 18,
     borderWidth: 1,
   },
   mediumCard: {
@@ -751,5 +775,14 @@ const styles = StyleSheet.create({
   activityText: {
     fontSize: 12,
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
