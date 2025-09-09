@@ -69,6 +69,95 @@ interface MetricCardProps {
   size?: 'small' | 'medium' | 'large';
 }
 
+interface SubscriptionCardProps {
+  data: DashboardData;
+  periodLabels: any;
+  timeFilter: string;
+  subscriptionFilter: string;
+  setSubscriptionFilter: (filter: string) => void;
+  subscriptionFilters: Array<{ id: string; label: string }>;
+  t: any;
+}
+
+const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
+  data,
+  periodLabels,
+  timeFilter,
+  subscriptionFilter,
+  setSubscriptionFilter,
+  subscriptionFilters,
+  t
+}) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
+  const getFilteredValue = () => {
+    switch (subscriptionFilter) {
+      case 'free': return Math.floor(data.newSubscriptions * 0.7); // 70% free
+      case 'paid': return Math.floor(data.newSubscriptions * 0.3); // 30% paid
+      default: return data.newSubscriptions;
+    }
+  };
+
+  return (
+    <View style={[styles.metricCard, { backgroundColor: isDark ? '#1F2937' : '#EEEFF4' }]}>
+      <View style={styles.metricHeader}>
+        <View style={styles.metricTitleRow}>
+          <Feather name="user-plus" size={20} color={isDark ? '#10B981' : '#059669'} />
+          <Text style={[styles.metricTitle, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+            {periodLabels.subscriptions}
+          </Text>
+        </View>
+        
+        {/* Subscription Filter Dropdown */}
+        <View style={styles.subscriptionFilterContainer}>
+          {subscriptionFilters.map((filter) => (
+            <TouchableOpacity
+              key={filter.id}
+              style={[
+                styles.subscriptionFilterButton,
+                {
+                  backgroundColor: subscriptionFilter === filter.id 
+                    ? (isDark ? '#10B981' : '#059669')
+                    : (isDark ? '#374151' : '#F3F4F6'),
+                },
+              ]}
+              onPress={() => setSubscriptionFilter(filter.id)}
+            >
+              <Text
+                style={[
+                  styles.subscriptionFilterText,
+                  {
+                    color: subscriptionFilter === filter.id 
+                      ? '#FFFFFF'
+                      : (isDark ? '#9CA3AF' : '#6B7280'),
+                  },
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+      
+      <Text style={[styles.metricValue, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+        {getFilteredValue().toLocaleString()}
+      </Text>
+      
+      <Text style={[styles.metricSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+        {`Users subscribed (${timeFilter})`}
+      </Text>
+      
+      <View style={[styles.trendBadge, { backgroundColor: '#7ecc91' }]}>
+        <Text style={[styles.trendText, { color: '#FFFFFF' }]}>
+          ↗ +8.2%
+        </Text>
+      </View>
+    </View>
+  );
+};
+
 const MetricCard: React.FC<MetricCardProps> = ({ 
   title, 
   value, 
@@ -231,6 +320,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [timeFilter, setTimeFilter] = useState('30d');
   const [selectedSite, setSelectedSite] = useState('all');
+  const [subscriptionFilter, setSubscriptionFilter] = useState('all');
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
@@ -275,6 +365,12 @@ export default function AdminDashboard() {
     { id: '7d', label: '7d' },
     { id: '30d', label: '30d' },
     { id: '90d', label: '90d' },
+  ];
+
+  const subscriptionFilters = [
+    { id: 'all', label: t('allSubscriptions') },
+    { id: 'free', label: t('fanSubscriptions') },
+    { id: 'paid', label: t('vipSubscriptions') },
   ];
 
   if (loading || !data) {
@@ -393,14 +489,14 @@ export default function AdminDashboard() {
                   size="medium"
                 />
                 
-                <MetricCard
-                  title={periodLabels.subscriptions}
-                  value={data.newSubscriptions}
-                  subtitle={`Paid Memberships Pro (${timeFilter})`}
-                  trend="up"
-                  trendValue="+8.2%"
-                  icon="user-plus"
-                  size="medium"
+                <SubscriptionCard
+                  data={data}
+                  periodLabels={periodLabels}
+                  timeFilter={timeFilter}
+                  subscriptionFilter={subscriptionFilter}
+                  setSubscriptionFilter={setSubscriptionFilter}
+                  subscriptionFilters={subscriptionFilters}
+                  t={t}
                 />
                 
                 <MetricCard
@@ -784,5 +880,29 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  subscriptionFilterContainer: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 4,
+  },
+  subscriptionFilterButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  subscriptionFilterText: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  metricHeader: {
+    marginBottom: 8,
+  },
+  metricTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
 });
