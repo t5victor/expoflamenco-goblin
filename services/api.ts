@@ -249,10 +249,13 @@ export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') 
       const timeMultipliers = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
       const multiplier = timeMultipliers[timePeriod as keyof typeof timeMultipliers] || 30;
       
+      const totalSubscriptions = aggregatedData.users * Math.ceil(multiplier / 30);
+      const vipSubscriptions = Math.floor(totalSubscriptions * 0.3); // 30% are VIP
+      
       const currentMetrics = {
         visitors: aggregatedData.posts * 15 * multiplier,
-        subscriptions: aggregatedData.users * Math.ceil(multiplier / 30),
-        revenue: aggregatedData.users * 99.9 * Math.ceil(multiplier / 30)
+        subscriptions: totalSubscriptions,
+        revenue: vipSubscriptions * 4.99 // VIP subs × €4.99
       };
 
       // Get comparison data from historical storage
@@ -329,10 +332,13 @@ export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') 
     const timeMultipliers = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
     const multiplier = timeMultipliers[timePeriod as keyof typeof timeMultipliers] || 30;
     
+    const totalSubscriptions = usersData.length * Math.ceil(multiplier / 30);
+    const vipSubscriptions = Math.floor(totalSubscriptions * 0.3); // 30% are VIP
+    
     const currentMetrics = {
       visitors: postsData.length * 15 * multiplier,
-      subscriptions: usersData.length * Math.ceil(multiplier / 30),
-      revenue: usersData.length * 99.9 * Math.ceil(multiplier / 30)
+      subscriptions: totalSubscriptions,
+      revenue: vipSubscriptions * 4.99 // VIP subs × €4.99
     };
 
     // Get comparison data from historical storage

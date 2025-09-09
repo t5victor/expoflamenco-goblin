@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageDropdown } from '@/components/LanguageDropdown';
 import { SiteSelector } from '@/components/SiteSelector';
+import { TrafficChart } from '@/components/TrafficChart';
 import { Feather } from '@expo/vector-icons';
 import { fetchSiteData } from '@/services/api';
 
@@ -105,61 +106,46 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   };
 
   return (
-    <View style={[styles.metricCard, { backgroundColor: isDark ? '#1F2937' : '#EEEFF4' }]}>
-      <View style={styles.metricHeader}>
-        <View style={styles.metricTitleRow}>
-          <Feather name="user-plus" size={20} color={isDark ? '#10B981' : '#059669'} />
-          <Text style={[styles.metricTitle, { color: isDark ? '#FFFFFF' : '#111827' }]}>
-            {periodLabels.subscriptions}
+    <View style={[
+      styles.metricCard,
+      styles.mediumCard,
+      { 
+        backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+        borderColor: isDark ? '#374151' : '#E5E7EB'
+      }
+    ]}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardTitleRow}>
+          <Feather name="user-plus" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+          <Text style={[
+            styles.cardTitle, 
+            { color: isDark ? '#D1D5DB' : '#374151' }
+          ]}>
+            {`${timeFilter} Subs`}
           </Text>
-        </View>
-        
-        {/* Subscription Filter Dropdown */}
-        <View style={styles.subscriptionFilterContainer}>
-          {subscriptionFilters.map((filter) => (
-            <TouchableOpacity
-              key={filter.id}
-              style={[
-                styles.subscriptionFilterButton,
-                {
-                  backgroundColor: subscriptionFilter === filter.id 
-                    ? (isDark ? '#10B981' : '#059669')
-                    : (isDark ? '#374151' : '#F3F4F6'),
-                },
-              ]}
-              onPress={() => setSubscriptionFilter(filter.id)}
-            >
-              <Text
-                style={[
-                  styles.subscriptionFilterText,
-                  {
-                    color: subscriptionFilter === filter.id 
-                      ? '#FFFFFF'
-                      : (isDark ? '#9CA3AF' : '#6B7280'),
-                  },
-                ]}
-              >
-                {filter.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
         </View>
       </View>
       
-      <Text style={[styles.metricValue, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+      <Text style={[
+        styles.cardValue, 
+        { color: isDark ? '#FFFFFF' : '#111827' }
+      ]}>
         {getFilteredValue().toLocaleString()}
       </Text>
       
-      <Text style={[styles.metricSubtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-        {`Users subscribed (${timeFilter})`}
+      <Text style={[
+        styles.cardSubtitle, 
+        { color: isDark ? '#9CA3AF' : '#6B7280' }
+      ]}>
+        Paid Memberships Pro
       </Text>
       
       {data.comparison?.subscriptions && (
         <View style={[
           styles.trendBadge, 
           { 
-            backgroundColor: data.comparison.subscriptions.trend === 'up' ? '#7ecc91' : 
-                           data.comparison.subscriptions.trend === 'down' ? '#ef4444' : '#6b7280'
+            backgroundColor: data.comparison.subscriptions.trend === 'up' ? '#10B981' : 
+                           data.comparison.subscriptions.trend === 'down' ? '#EF4444' : '#6B7280'
           }
         ]}>
           <Text style={[styles.trendText, { color: '#FFFFFF' }]}>
@@ -168,6 +154,37 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
           </Text>
         </View>
       )}
+      
+      {/* Subscription Filter Dropdown */}
+      <View style={[styles.subscriptionFilterContainer, { marginTop: 8 }]}>
+        {subscriptionFilters.map((filter) => (
+          <TouchableOpacity
+            key={filter.id}
+            style={[
+              styles.subscriptionFilterButton,
+              {
+                backgroundColor: subscriptionFilter === filter.id 
+                  ? (isDark ? '#10B981' : '#059669')
+                  : (isDark ? '#374151' : '#F3F4F6'),
+              },
+            ]}
+            onPress={() => setSubscriptionFilter(filter.id)}
+          >
+            <Text
+              style={[
+                styles.subscriptionFilterText,
+                {
+                  color: subscriptionFilter === filter.id 
+                    ? '#FFFFFF'
+                    : (isDark ? '#9CA3AF' : '#6B7280'),
+                },
+              ]}
+            >
+              {filter.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 };
@@ -246,61 +263,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
   );
 };
 
-const ChartCard: React.FC<{data: DashboardData}> = ({data}) => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const maxValue = Math.max(...data.weeklyData.map(d => d.visitors));
-
-  return (
-    <View style={[
-      styles.chartCard,
-      { 
-        backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-        borderColor: isDark ? '#374151' : '#E5E7EB'
-      }
-    ]}>
-      <View style={styles.chartHeader}>
-        <Text style={[
-          styles.chartTitle,
-          { color: isDark ? '#FFFFFF' : '#111827' }
-        ]}>
-          Weekly Traffic Overview
-        </Text>
-        <TouchableOpacity style={styles.chartAction}>
-          <Feather name="more-horizontal" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.chart}>
-        {data.weeklyData.map((item, index) => (
-          <View key={index} style={styles.barContainer}>
-            <Text style={[
-              styles.barValue,
-              { color: isDark ? '#9CA3AF' : '#6B7280' }
-            ]}>
-              {(item.visitors / 1000).toFixed(1)}k
-            </Text>
-            <View 
-              style={[
-                styles.bar,
-                { 
-                  height: (item.visitors / maxValue) * 100,
-                  backgroundColor: '#3B82F6'
-                }
-              ]} 
-            />
-            <Text style={[
-              styles.barLabel,
-              { color: isDark ? '#9CA3AF' : '#6B7280' }
-            ]}>
-              {item.day}
-            </Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-};
 
 // Helper function to get appropriate labels based on time period
 const getTimePeriodLabels = (timePeriod: string, t: any) => {
@@ -537,19 +499,29 @@ export default function AdminDashboard() {
               {/* Chart and Secondary Metrics */}
               <View style={styles.contentRow}>
                 <View style={styles.leftColumn}>
-                  <ChartCard data={data} />
+                  <TrafficChart 
+                    weeklyData={data.weeklyData} 
+                    timePeriod={timeFilter}
+                    siteId={selectedSite}
+                  />
                   
                   <View style={styles.secondaryMetrics}>
                     <MetricCard
-                      title="Avg. Session"
-                      value={data.avgSessionTime}
-                      icon="clock"
+                      title="Bounce Rate"
+                      value="32.4%"
+                      subtitle="Pages per session"
+                      trend="down"
+                      trendValue="-2.1%"
+                      icon="activity"
                       size="small"
                     />
                     <MetricCard
-                      title="Active Members"
-                      value={data.activeMembers}
-                      icon="users"
+                      title="Page Views"
+                      value={Math.floor(data.todayVisitors * 2.3).toLocaleString()}
+                      subtitle="Total page views"
+                      trend="up"
+                      trendValue="+8.7%"
+                      icon="eye"
                       size="small"
                     />
                   </View>
@@ -737,7 +709,7 @@ const styles = StyleSheet.create({
   metricCard: {
     padding: 20,
     borderRadius: 18,
-    borderWidth: 1,
+    borderWidth: 0,
   },
   mediumCard: {
     flex: 1,

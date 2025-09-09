@@ -48,6 +48,14 @@ export const translations = {
   fanSubscriptions: "Fan (Free)",
   vipSubscriptions: "VIP (Paid)",
   
+  // Chart labels
+  hourlyTraffic: "Hourly Traffic",
+  weeklyTraffic: "Weekly Traffic", 
+  monthlyTraffic: "Monthly Traffic",
+  quarterlyTraffic: "Quarterly Traffic",
+  trafficOverview: "Traffic Overview",
+  allSites: "All Sites",
+  
   // Dashboard
   dashboard: {
     title: 'Overview',

@@ -1,7 +1,7 @@
 {
   "name": "expo-goblin",
   "main": "expo-router/entry",
-  "version": "1.0.1",
+  "version": "1.0.7",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -43,7 +43,8 @@
     "react-native-screens": "~4.11.1",
     "react-native-vector-icons": "^10.3.0",
     "react-native-web": "~0.20.0",
-    "react-native-webview": "13.13.5"
+    "react-native-webview": "13.13.5",
+    "recharts": "^3.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
