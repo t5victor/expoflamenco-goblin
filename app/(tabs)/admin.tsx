@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { LanguageDropdown } from '@/components/LanguageDropdown';
 import { SiteSelector } from '@/components/SiteSelector';
 import { TrafficChart } from '@/components/TrafficChart';
+import { SubsChart } from '@/components/SubsChart';
 import { Feather } from '@expo/vector-icons';
 import { fetchSiteData } from '@/services/api';
 
@@ -505,6 +506,15 @@ export default function AdminDashboard() {
                 <View style={[styles.leftColumn, isMobile && styles.mobileLeftColumn]}>
                   <TrafficChart 
                     weeklyData={data.weeklyData} 
+                    timePeriod={timeFilter}
+                    siteId={selectedSite}
+                  />
+                  
+                  <SubsChart 
+                    subsData={data.weeklyData.map(item => ({ 
+                      day: item.day, 
+                      subscriptions: Math.floor(item.visitors * 0.02) 
+                    }))} 
                     timePeriod={timeFilter}
                     siteId={selectedSite}
                   />
