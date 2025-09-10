@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, Dimensions } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -10,21 +10,33 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { width } = Dimensions.get('window');
+  const isMobile = width < 768;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: '#3B82F6',
+        tabBarInactiveTintColor: colorScheme === 'dark' ? '#9CA3AF' : '#6B7280',
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
+        tabBarStyle: isMobile ? {
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+          borderTopWidth: 0,
+          backgroundColor: colorScheme === 'dark' ? '#1F2937' : '#FFFFFF',
+          ...Platform.select({
+            ios: {
+              position: 'absolute',
+            },
+          }),
+        } : { display: 'none' },
       }}>
       <Tabs.Screen
         name="admin"

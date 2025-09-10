@@ -31,6 +31,7 @@ interface DashboardData {
 }
 
 const { width: screenWidth } = Dimensions.get('window');
+const isMobile = screenWidth < 768;
 
 // Fallback mock data for API errors
 const getFallbackData = (siteId: string): DashboardData => {
@@ -370,7 +371,7 @@ export default function AdminDashboard() {
       { backgroundColor: isDark ? '#111827' : '#F9FAFB' }
     ]}>
       <View style={styles.layout}>
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        {!isMobile && <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />}
         
         <View style={styles.content}>
           <ScrollView
@@ -381,7 +382,7 @@ export default function AdminDashboard() {
             showsVerticalScrollIndicator={false}
           >
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, isMobile && styles.mobileHeader]}>
               <View style={styles.headerLeft}>
                 <Text style={[
                   styles.headerTitle, 
@@ -400,13 +401,14 @@ export default function AdminDashboard() {
                 </View>
               </View>
               
-              <View style={styles.headerActions}>
-                <View style={styles.filterRow}>
+              <View style={[styles.headerActions, isMobile && styles.mobileHeaderActions]}>
+                <View style={[styles.filterRow, isMobile && styles.mobileFilterRow]}>
                   {timeFilters.map((filter) => (
                     <TouchableOpacity
                       key={filter.id}
                       style={[
                         styles.filterButton,
+                        isMobile && styles.mobileFilterButton,
                         { 
                           backgroundColor: timeFilter === filter.id 
                             ? '#3B82F6' 
@@ -432,29 +434,31 @@ export default function AdminDashboard() {
                   ))}
                 </View>
                 
-                <View style={styles.rightActions}>
-                  <LanguageDropdown />
+                <View style={[styles.rightActions, isMobile && styles.mobileRightActions]}>
+                  {!isMobile && <LanguageDropdown />}
                   
-                  <TouchableOpacity style={[
-                    styles.actionButton,
-                    { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }
-                  ]}>
-                    <Feather name="download" size={16} color={isDark ? '#FFFFFF' : '#374151'} />
-                    <Text style={[
-                      styles.actionButtonText,
-                      { color: isDark ? '#FFFFFF' : '#374151' }
+                  {!isMobile && (
+                    <TouchableOpacity style={[
+                      styles.actionButton,
+                      { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }
                     ]}>
-                      {t('export')}
-                    </Text>
-                  </TouchableOpacity>
+                      <Feather name="download" size={16} color={isDark ? '#FFFFFF' : '#374151'} />
+                      <Text style={[
+                        styles.actionButtonText,
+                        { color: isDark ? '#FFFFFF' : '#374151' }
+                      ]}>
+                        {t('export')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             </View>
 
             {/* Main Dashboard Grid */}
-            <View style={styles.dashboardGrid}>
+            <View style={[styles.dashboardGrid, isMobile && styles.mobileDashboardGrid]}>
               {/* Key Metrics Row */}
-              <View style={styles.metricsRow}>
+              <View style={[styles.metricsRow, isMobile && styles.mobileMetricsRow]}>
                 <MetricCard
                   title={periodLabels.visitors}
                   value={data.todayVisitors}
@@ -497,19 +501,22 @@ export default function AdminDashboard() {
               </View>
 
               {/* Chart and Secondary Metrics */}
-              <View style={styles.contentRow}>
-                <View style={styles.leftColumn}>
+              <View style={[styles.contentRow, isMobile && styles.mobileContentRow]}>
+                <View style={[styles.leftColumn, isMobile && styles.mobileLeftColumn]}>
                   <TrafficChart 
                     weeklyData={data.weeklyData} 
                     timePeriod={timeFilter}
                     siteId={selectedSite}
                   />
                   
-                  <View style={styles.secondaryMetrics}>
+                </View>
+                
+                <View style={[styles.rightColumn, isMobile && styles.mobileRightColumn]}>
+                  <View style={styles.rightMetrics}>
                     <MetricCard
                       title="Bounce Rate"
-                      value="32.4%"
-                      subtitle="Pages per session"
+                      value="24.3%"
+                      subtitle="Session engagement"
                       trend="down"
                       trendValue="-2.1%"
                       icon="activity"
@@ -517,17 +524,15 @@ export default function AdminDashboard() {
                     />
                     <MetricCard
                       title="Page Views"
-                      value={Math.floor(data.todayVisitors * 2.3).toLocaleString()}
-                      subtitle="Total page views"
+                      value="89.2k"
+                      subtitle="Monthly page views"
                       trend="up"
-                      trendValue="+8.7%"
-                      icon="eye"
+                      trendValue="+12.5%"
+                      icon="file-text"
                       size="small"
                     />
                   </View>
-                </View>
-                
-                <View style={styles.rightColumn}>
+                  
                   <View style={[
                     styles.topCountriesCard,
                     { 
@@ -619,7 +624,7 @@ const styles = StyleSheet.create({
   },
   layout: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
   },
   content: {
     flex: 1,
@@ -704,6 +709,10 @@ const styles = StyleSheet.create({
   },
   rightColumn: {
     flex: 1,
+    gap: 16,
+  },
+  rightMetrics: {
+    flexDirection: 'row',
     gap: 16,
   },
   metricCard: {
@@ -890,5 +899,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  
+  // Mobile Styles
+  mobileHeader: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 16,
+    paddingHorizontal: 16,
+  },
+  mobileHeaderActions: {
+    flexDirection: 'column',
+    gap: 12,
+    alignItems: 'stretch',
+  },
+  mobileFilterRow: {
+    justifyContent: 'center',
+  },
+  mobileFilterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  mobileRightActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  mobileDashboardGrid: {
+    paddingHorizontal: 16,
+  },
+  mobileMetricsRow: {
+    flexDirection: 'column',
+    gap: 12,
+  },
+  mobileContentRow: {
+    flexDirection: 'column',
+    gap: 16,
+  },
+  mobileLeftColumn: {
+    flex: 1,
+  },
+  mobileRightColumn: {
+    flex: 1,
   },
 });
