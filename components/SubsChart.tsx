@@ -4,8 +4,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useTranslation } from '@/hooks/useTranslation';
 
-interface TrafficChartProps {
-  weeklyData: Array<{ day: string; visitors: number }>;
+interface SubsChartProps {
+  subsData: Array<{ day: string; subscriptions: number }>;
   timePeriod: string;
   siteId: string;
 }
@@ -13,8 +13,8 @@ interface TrafficChartProps {
 const { width: screenWidth } = Dimensions.get('window');
 const isMobile = screenWidth < 768;
 
-export const TrafficChart: React.FC<TrafficChartProps> = ({ 
-  weeklyData, 
+export const SubsChart: React.FC<SubsChartProps> = ({ 
+  subsData, 
   timePeriod, 
   siteId 
 }) => {
@@ -28,13 +28,13 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
       case '24h':
         return ['6AM', '9AM', '12PM', '3PM', '6PM', '9PM', '12AM'];
       case '7d':
-        return weeklyData.map(item => item.day);
+        return subsData.map(item => item.day);
       case '30d':
         return ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
       case '90d':
         return ['Month 1', 'Month 2', 'Month 3'];
       default:
-        return weeklyData.map(item => item.day);
+        return subsData.map(item => item.day);
     }
   };
 
@@ -45,57 +45,57 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
     
     switch (timePeriod) {
       case '24h':
-        // Hourly data simulation
-        const baseHourly = weeklyData[0]?.visitors || 1000;
+        // Hourly subscription data simulation
+        const baseHourly = subsData[0]?.subscriptions || 50;
         values = [
-          Math.floor(baseHourly * 0.3), // 6AM - low
-          Math.floor(baseHourly * 0.5), // 9AM - moderate
-          Math.floor(baseHourly * 0.8), // 12PM - high
-          Math.floor(baseHourly * 0.9), // 3PM - peak
-          Math.floor(baseHourly * 0.7), // 6PM - moderate
-          Math.floor(baseHourly * 0.4), // 9PM - low
+          Math.floor(baseHourly * 0.1), // 6AM - very low
+          Math.floor(baseHourly * 0.3), // 9AM - low
+          Math.floor(baseHourly * 0.8), // 12PM - moderate
+          Math.floor(baseHourly * 1.2), // 3PM - high
+          Math.floor(baseHourly * 0.9), // 6PM - moderate
+          Math.floor(baseHourly * 0.6), // 9PM - low
           Math.floor(baseHourly * 0.2), // 12AM - very low
         ];
         break;
       case '7d':
-        values = weeklyData.map(item => item.visitors);
+        values = subsData.map(item => item.subscriptions);
         break;
       case '30d':
         // Weekly aggregation
-        const baseWeekly = weeklyData.reduce((sum, item) => sum + item.visitors, 0);
+        const baseWeekly = subsData.reduce((sum, item) => sum + item.subscriptions, 0);
         values = [
-          Math.floor(baseWeekly * 0.8),
+          Math.floor(baseWeekly * 0.7),
+          Math.floor(baseWeekly * 1.0),
           Math.floor(baseWeekly * 1.1),
-          Math.floor(baseWeekly * 0.9),
-          Math.floor(baseWeekly * 1.2),
+          Math.floor(baseWeekly * 1.3),
         ];
         break;
       case '90d':
         // Monthly aggregation
-        const baseMonthly = weeklyData.reduce((sum, item) => sum + item.visitors, 0) * 4;
+        const baseMonthly = subsData.reduce((sum, item) => sum + item.subscriptions, 0) * 4;
         values = [
-          Math.floor(baseMonthly * 0.9),
-          Math.floor(baseMonthly * 1.0),
+          Math.floor(baseMonthly * 0.8),
           Math.floor(baseMonthly * 1.1),
+          Math.floor(baseMonthly * 1.2),
         ];
         break;
       default:
-        values = weeklyData.map(item => item.visitors);
+        values = subsData.map(item => item.subscriptions);
     }
     
     return labels.map((label, index) => ({
       name: label,
-      visitors: values[index] || 0
+      subscriptions: values[index] || 0
     }));
   };
 
   const chartTitle = () => {
     switch (timePeriod) {
-      case '24h': return t('hourlyTraffic') || 'Hourly Traffic';
-      case '7d': return t('weeklyTraffic') || 'Weekly Traffic';
-      case '30d': return t('monthlyTraffic') || 'Monthly Traffic';
-      case '90d': return t('quarterlyTraffic') || 'Quarterly Traffic';
-      default: return t('trafficOverview') || 'Traffic Overview';
+      case '24h': return 'Hourly Subscriptions';
+      case '7d': return 'Weekly Subscriptions';
+      case '30d': return 'Monthly Subscriptions';
+      case '90d': return 'Quarterly Subscriptions';
+      default: return 'Subscription Overview';
     }
   };
 
@@ -142,15 +142,15 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
                 borderRadius: '8px',
                 color: isDark ? '#FFFFFF' : '#111827'
               }}
-              formatter={(value: any) => [value.toLocaleString(), 'Visitors']}
+              formatter={(value: any) => [value.toLocaleString(), 'Subscriptions']}
             />
             <Line 
               type="monotone" 
-              dataKey="visitors" 
-              stroke={isDark ? '#10B981' : '#059669'}
+              dataKey="subscriptions" 
+              stroke={isDark ? '#3B82F6' : '#2563EB'}
               strokeWidth={3}
-              dot={{ fill: isDark ? '#10B981' : '#059669', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: isDark ? '#10B981' : '#059669', strokeWidth: 2 }}
+              dot={{ fill: isDark ? '#3B82F6' : '#2563EB', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: isDark ? '#3B82F6' : '#2563EB', strokeWidth: 2 }}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -159,7 +159,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
       <View style={styles.stats}>
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#111827' }]}>
-            {Math.max(...chartData.map(d => d.visitors)).toLocaleString()}
+            {Math.max(...chartData.map(d => d.subscriptions)).toLocaleString()}
           </Text>
           <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
             Peak
@@ -167,7 +167,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#111827' }]}>
-            {Math.round(chartData.reduce((a, b) => a + b.visitors, 0) / chartData.length).toLocaleString()}
+            {Math.round(chartData.reduce((a, b) => a + b.subscriptions, 0) / chartData.length).toLocaleString()}
           </Text>
           <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
             Average
@@ -175,7 +175,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#111827' }]}>
-            {chartData.reduce((a, b) => a + b.visitors, 0).toLocaleString()}
+            {chartData.reduce((a, b) => a + b.subscriptions, 0).toLocaleString()}
           </Text>
           <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
             Total
