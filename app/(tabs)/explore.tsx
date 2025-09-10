@@ -6,6 +6,7 @@ import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Animated, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
+const isMobile = width < 768;
 
 interface SettingsSectionProps {
   title: string;
@@ -169,6 +170,9 @@ export default function SettingsScreen() {
   const [selectedBackgroundPalette, setSelectedBackgroundPalette] = useState('default');
   const [selectedAccentColor, setSelectedAccentColor] = useState('#10B981');
   const [autoSave, setAutoSave] = useState(true);
+  const [animations, setAnimations] = useState(true);
+  const [compactMode, setCompactMode] = useState(false);
+  const [showTooltips, setShowTooltips] = useState(true);
 
   // Font options
   const fontOptions = [
@@ -221,6 +225,14 @@ export default function SettingsScreen() {
       primary: '#2d2d2d', 
       secondary: '#3a3a3a',
       icon: 'moon'
+    },
+    { 
+      id: 'nature', 
+      name: 'Nature Green', 
+      description: 'Fresh and organic',
+      primary: '#f0f7f0', 
+      secondary: '#f8fbf8',
+      icon: 'leaf'
     },
   ];
 
@@ -356,186 +368,138 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
-        {/* Font Selection */}
-        <SettingsSection title="Typography">
-          <View style={styles.fontContainer}>
-            {fontOptions.map((font) => (
-              <TouchableOpacity
-                key={font.family}
-                style={[
-                  styles.fontCard,
-                  {
-                    backgroundColor: selectedFont === font.family 
-                      ? selectedAccentColor 
-                      : (isDark ? '#1F2937' : '#FFFFFF'),
-                    borderColor: selectedFont === font.family 
-                      ? selectedAccentColor 
-                      : (isDark ? '#374151' : '#E5E7EB'),
-                  }
-                ]}
-                onPress={() => setSelectedFont(font.family)}
-              >
-                <Text style={[
-                  styles.fontText,
-                  { 
-                    color: selectedFont === font.family 
-                      ? '#FFFFFF' 
-                      : (isDark ? '#FFFFFF' : '#111827'),
-                    fontFamily: font.family
-                  }
-                ]}>
-                  {font.display}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        <View style={[styles.settingsContainer, isMobile && styles.mobileSettingsContainer]}>
+          {/* Typography */}
+          <View style={[styles.settingCard, styles.largeCard, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
+            <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#111827' }]}>Typography</Text>
+            <View style={styles.fontRow}>
+              {fontOptions.map((font) => (
+                <TouchableOpacity
+                  key={font.family}
+                  style={[
+                    styles.fontButton,
+                    { backgroundColor: selectedFont === font.family ? selectedAccentColor : (isDark ? '#374151' : '#F3F4F6') }
+                  ]}
+                  onPress={() => setSelectedFont(font.family)}
+                >
+                  <Text style={[
+                    styles.fontText,
+                    { 
+                      color: selectedFont === font.family ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#111827'),
+                      fontFamily: font.family 
+                    }
+                  ]}>
+                    {font.display}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </SettingsSection>
 
-        {/* Accent Colors */}
-        <SettingsSection title="Accent Colors">
-          <View style={styles.colorContainer}>
-            {accentColors.map((colorItem) => (
-              <TouchableOpacity
-                key={colorItem.color}
-                style={[
-                  styles.colorCard,
-                  {
-                    backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-                    borderColor: selectedAccentColor === colorItem.color 
-                      ? colorItem.color 
-                      : (isDark ? '#374151' : '#E5E7EB'),
-                    borderWidth: selectedAccentColor === colorItem.color ? 3 : 1,
-                  }
-                ]}
-                onPress={() => setSelectedAccentColor(colorItem.color)}
-              >
-                <View style={[
-                  styles.colorSwatch,
-                  { backgroundColor: colorItem.color }
-                ]}>
-                  {selectedAccentColor === colorItem.color && (
-                    <Feather name="check" size={16} color="#FFFFFF" />
-                  )}
-                </View>
-                <Text style={[
-                  styles.colorName,
-                  { 
-                    color: selectedAccentColor === colorItem.color 
-                      ? colorItem.color 
-                      : (isDark ? '#FFFFFF' : '#111827')
-                  }
-                ]}>
-                  {colorItem.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {/* Colors */}
+          <View style={[styles.settingCard, styles.mediumCard, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
+            <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#111827' }]}>Accent Color</Text>
+            <View style={styles.colorRow}>
+              {accentColors.map((color) => (
+                <TouchableOpacity
+                  key={color.color}
+                  style={[
+                    styles.colorCircle,
+                    { 
+                      backgroundColor: color.color,
+                      borderWidth: selectedAccentColor === color.color ? 3 : 0,
+                      borderColor: '#FFFFFF'
+                    }
+                  ]}
+                  onPress={() => setSelectedAccentColor(color.color)}
+                />
+              ))}
+            </View>
           </View>
-        </SettingsSection>
 
-        {/* Background Themes */}
-        <SettingsSection title="Background Themes">
-          <View style={styles.themeContainer}>
-            {backgroundPalettes.map((palette) => (
-              <TouchableOpacity
-                key={palette.id}
-                style={[
-                  styles.themeCard,
-                  {
-                    backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-                    borderColor: selectedBackgroundPalette === palette.id 
-                      ? selectedAccentColor 
-                      : (isDark ? '#374151' : '#E5E7EB'),
-                    borderWidth: selectedBackgroundPalette === palette.id ? 3 : 1,
-                  }
-                ]}
-                onPress={() => setSelectedBackgroundPalette(palette.id)}
-              >
-                <View style={styles.themePreview}>
-                  <View style={[
-                    styles.themeBlock,
-                    { backgroundColor: palette.primary }
-                  ]} />
-                  <View style={[
-                    styles.themeBlock,
-                    { backgroundColor: palette.secondary }
-                  ]} />
-                </View>
-                <Text style={[
-                  styles.themeName,
-                  { 
-                    color: selectedBackgroundPalette === palette.id 
-                      ? selectedAccentColor 
-                      : (isDark ? '#FFFFFF' : '#111827')
-                  }
-                ]}>
-                  {palette.name}
-                </Text>
-                {selectedBackgroundPalette === palette.id && (
-                  <View style={[styles.selectedBadge, { backgroundColor: selectedAccentColor }]}>
-                    <Feather name="check" size={14} color="#FFFFFF" />
+          {/* Background Themes */}
+          <View style={[styles.settingCard, styles.mediumCard, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
+            <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#111827' }]}>Background</Text>
+            <View style={styles.themeRow}>
+              {backgroundPalettes.slice(0, 3).map((palette) => (
+                <TouchableOpacity
+                  key={palette.id}
+                  style={[
+                    styles.themeButton,
+                    { 
+                      borderColor: selectedBackgroundPalette === palette.id ? selectedAccentColor : (isDark ? '#4B5563' : '#E5E7EB'),
+                      borderWidth: 2
+                    }
+                  ]}
+                  onPress={() => setSelectedBackgroundPalette(palette.id)}
+                >
+                  <View style={styles.themeDots}>
+                    <View style={[styles.dot, { backgroundColor: palette.primary }]} />
+                    <View style={[styles.dot, { backgroundColor: palette.secondary }]} />
                   </View>
-                )}
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </SettingsSection>
 
-        {/* Settings */}
-        <View style={styles.settingsRow}>
-          <View style={[
-            styles.settingsCard,
-            { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }
-          ]}>
-            <Text style={[
-              styles.settingsTitle,
-              { color: isDark ? '#FFFFFF' : '#111827' }
-            ]}>
-              Auto-Save
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.toggle,
-                { backgroundColor: autoSave ? selectedAccentColor : (isDark ? '#374151' : '#E5E7EB') }
-              ]}
-              onPress={() => setAutoSave(!autoSave)}
+          {/* Settings Toggles */}
+          <View style={[styles.settingCard, styles.largeCard, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
+            <Text style={[styles.sectionTitle, { color: isDark ? '#FFFFFF' : '#111827' }]}>Interface Settings</Text>
+            <View style={styles.toggleGrid}>
+              <View style={styles.toggleItem}>
+                <Text style={[styles.toggleLabel, { color: isDark ? '#FFFFFF' : '#111827' }]}>Auto-Save</Text>
+                <TouchableOpacity
+                  style={[styles.toggle, { backgroundColor: autoSave ? selectedAccentColor : (isDark ? '#374151' : '#E5E7EB') }]}
+                  onPress={() => setAutoSave(!autoSave)}
+                >
+                  <View style={[styles.toggleThumb, { transform: [{ translateX: autoSave ? 20 : 2 }] }]} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.toggleItem}>
+                <Text style={[styles.toggleLabel, { color: isDark ? '#FFFFFF' : '#111827' }]}>Animations</Text>
+                <TouchableOpacity
+                  style={[styles.toggle, { backgroundColor: animations ? selectedAccentColor : (isDark ? '#374151' : '#E5E7EB') }]}
+                  onPress={() => setAnimations(!animations)}
+                >
+                  <View style={[styles.toggleThumb, { transform: [{ translateX: animations ? 20 : 2 }] }]} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.toggleItem}>
+                <Text style={[styles.toggleLabel, { color: isDark ? '#FFFFFF' : '#111827' }]}>Compact Mode</Text>
+                <TouchableOpacity
+                  style={[styles.toggle, { backgroundColor: compactMode ? selectedAccentColor : (isDark ? '#374151' : '#E5E7EB') }]}
+                  onPress={() => setCompactMode(!compactMode)}
+                >
+                  <View style={[styles.toggleThumb, { transform: [{ translateX: compactMode ? 20 : 2 }] }]} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.toggleItem}>
+                <Text style={[styles.toggleLabel, { color: isDark ? '#FFFFFF' : '#111827' }]}>Show Tooltips</Text>
+                <TouchableOpacity
+                  style={[styles.toggle, { backgroundColor: showTooltips ? selectedAccentColor : (isDark ? '#374151' : '#E5E7EB') }]}
+                  onPress={() => setShowTooltips(!showTooltips)}
+                >
+                  <View style={[styles.toggleThumb, { transform: [{ translateX: showTooltips ? 20 : 2 }] }]} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={[styles.buttonRow, isMobile && styles.mobileButtonRow]}>
+            <TouchableOpacity 
+              style={[styles.actionBtn, { backgroundColor: selectedAccentColor }]}
+              onPress={savePreferences}
             >
-              <View style={[
-                styles.toggleThumb,
-                { transform: [{ translateX: autoSave ? 24 : 2 }] }
-              ]} />
+              <Text style={styles.saveText}>Save Changes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.actionBtn, { backgroundColor: 'transparent', borderColor: isDark ? '#374151' : '#E5E7EB', borderWidth: 2 }]}
+              onPress={resetToDefaults}
+            >
+              <Text style={[styles.resetText, { color: isDark ? '#FFFFFF' : '#111827' }]}>Reset All</Text>
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity 
-            style={[
-              styles.settingsCard,
-              { backgroundColor: selectedAccentColor }
-            ]}
-            onPress={savePreferences}
-          >
-            <Feather name="save" size={20} color="#FFFFFF" />
-            <Text style={styles.saveText}>Save</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[
-              styles.settingsCard,
-              { 
-                backgroundColor: 'transparent',
-                borderColor: isDark ? '#374151' : '#E5E7EB',
-                borderWidth: 2
-              }
-            ]}
-            onPress={resetToDefaults}
-          >
-            <Feather name="refresh-cw" size={20} color={isDark ? '#FFFFFF' : '#111827'} />
-            <Text style={[
-              styles.resetText,
-              { color: isDark ? '#FFFFFF' : '#111827' }
-            ]}>
-              Reset
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* Footer Info */}
@@ -581,172 +545,132 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     opacity: 0.8,
   },
-  section: {
+  
+  settingsContainer: {
     paddingHorizontal: 24,
-    marginBottom: 24,
+    gap: 16,
+    marginBottom: 32,
   },
-  sectionHeader: {
-    marginBottom: 16,
+  settingCard: {
+    padding: 20,
+    borderRadius: 16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  largeCard: {
+    minHeight: 120,
+  },
+  mediumCard: {
+    minHeight: 100,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  sectionDivider: {
-    height: 2,
-    width: 40,
-    borderRadius: 1,
-  },
-  sectionContent: {
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  
-  // Font Cards
-  fontContainer: {
+  fontRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
   },
-  fontCard: {
-    padding: 16,
+  fontButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 12,
-    borderWidth: 2,
-    width: (width - 72) / 3,
     alignItems: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   fontText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  
-  // Color Cards
-  colorContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  colorCard: {
-    padding: 16,
-    borderRadius: 12,
-    width: (width - 84) / 4,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  colorSwatch: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  colorName: {
     fontSize: 14,
     fontWeight: '600',
-    textAlign: 'center',
   },
-  
-  // Theme Cards
-  themeContainer: {
+  colorRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  colorCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  themeRow: {
+    flexDirection: 'row',
     gap: 12,
   },
-  themeCard: {
-    padding: 16,
-    borderRadius: 12,
-    width: (width - 72) / 2.5,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    position: 'relative',
-  },
-  themePreview: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    gap: 4,
-  },
-  themeBlock: {
-    width: 30,
-    height: 20,
-    borderRadius: 4,
-  },
-  themeName: {
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  selectedBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  
-  // Settings Row
-  settingsRow: {
-    paddingHorizontal: 24,
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  settingsCard: {
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  settingsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+  themeButton: {
     flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeDots: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  dot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+  },
+  toggleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  toggleItem: {
+    width: '48%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  toggleLabel: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   toggle: {
-    width: 50,
-    height: 28,
-    borderRadius: 14,
+    width: 44,
+    height: 24,
+    borderRadius: 12,
     padding: 2,
     justifyContent: 'center',
   },
   toggleThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: '#FFFFFF',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   saveText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   resetText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  
+  // Mobile Styles
+  mobileSettingsContainer: {
+    paddingHorizontal: 16,
+  },
+  mobileButtonRow: {
+    flexDirection: 'column',
+    gap: 12,
   },
   
   footer: {

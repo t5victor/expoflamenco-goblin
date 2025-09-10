@@ -11,6 +11,7 @@ interface TrafficChartProps {
 }
 
 const { width: screenWidth } = Dimensions.get('window');
+const isMobile = screenWidth < 768;
 
 export const TrafficChart: React.FC<TrafficChartProps> = ({ 
   weeklyData, 
@@ -111,9 +112,12 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
         </Text>
       </View>
       
-      <View style={styles.chartContainer}>
+      <View style={[styles.chartContainer, isMobile && styles.mobileChartContainer]}>
         <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={chartData}>
+          <LineChart 
+            data={chartData}
+            margin={isMobile ? { top: 5, right: 5, left: 5, bottom: 5 } : undefined}
+          >
             <CartesianGrid 
               strokeDasharray="3 3" 
               stroke={isDark ? '#374151' : '#E5E7EB'} 
@@ -129,6 +133,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
               tickLine={false}
               tick={{ fontSize: 12, fill: isDark ? '#9CA3AF' : '#6B7280' }}
               tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+              width={isMobile ? 35 : undefined}
             />
             <Tooltip 
               contentStyle={{
@@ -203,6 +208,10 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 16,
     height: 200,
+  },
+  mobileChartContainer: {
+    marginHorizontal: 0,
+    paddingHorizontal: 0,
   },
   stats: {
     flexDirection: 'row',
