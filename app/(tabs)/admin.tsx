@@ -34,38 +34,6 @@ interface DashboardData {
 const { width: screenWidth } = Dimensions.get('window');
 const isMobile = screenWidth < 768;
 
-// Fallback mock data for API errors
-const getFallbackData = (siteId: string): DashboardData => {
-  const baseData = {
-    all: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
-    agenda: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
-    espacio: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
-    comunidad: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
-    revista: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
-    academia: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
-    podcast: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
-    tv: { todayVisitors: 0, yesterdayVisitors: 0, newSubscriptions: 0, totalSubscriptions: 0, monthlyRevenue: 0, activeMembers: 0 },
-  };
-
-  const fallbackWeeklyData = [
-    { day: 'Mon', visitors: 0 },
-    { day: 'Tue', visitors: 0 },
-    { day: 'Wed', visitors: 0 },
-    { day: 'Thu', visitors: 0 },
-    { day: 'Fri', visitors: 0 },
-    { day: 'Sat', visitors: 0 },
-    { day: 'Sun', visitors: 0 }
-  ];
-
-  return {
-    ...baseData[siteId as keyof typeof baseData] || baseData.all,
-    conversionRate: 0,
-    avgSessionTime: '0m 0s',
-    topCountries: [],
-    weeklyData: fallbackWeeklyData,
-    previousWeekData: fallbackWeeklyData
-  };
-};
 
 interface MetricCardProps {
   title: string;
@@ -297,7 +265,7 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [timeFilter, setTimeFilter] = useState('30d');
-  const [selectedSite, setSelectedSite] = useState('all');
+  const [selectedSite, setSelectedSite] = useState('com');
   const [subscriptionFilter, setSubscriptionFilter] = useState('all');
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -325,8 +293,8 @@ export default function AdminDashboard() {
         stack: (error as Error).stack,
         site: selectedSite
       });
-      // Fallback to empty data on error
-      setData(getFallbackData(selectedSite));
+      // Set data to null on error - will show ERROR in UI
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -351,7 +319,7 @@ export default function AdminDashboard() {
     { id: 'paid', label: t('vipSubscriptions') },
   ];
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <SafeAreaView style={[
         styles.container, 
@@ -360,6 +328,21 @@ export default function AdminDashboard() {
         <View style={[styles.loadingContainer, { backgroundColor: isDark ? '#111827' : '#F9FAFB' }]}>
           <Text style={[styles.loadingText, { color: isDark ? '#FFFFFF' : '#111827' }]}>
             {t('loading')}...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!data) {
+    return (
+      <SafeAreaView style={[
+        styles.container, 
+        { backgroundColor: isDark ? '#111827' : '#F9FAFB' }
+      ]}>
+        <View style={[styles.loadingContainer, { backgroundColor: isDark ? '#111827' : '#F9FAFB' }]}>
+          <Text style={[styles.loadingText, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+            API ERROR - No data available
           </Text>
         </View>
       </SafeAreaView>

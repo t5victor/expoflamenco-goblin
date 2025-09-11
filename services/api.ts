@@ -1,9 +1,11 @@
-const getApiBaseUrl = (siteId: string) => {
-  if (siteId === 'all') {
-    return 'https://expoflamenco.com/wp-json';
+const getWPStatsUrl = (siteId: string) => {
+  if (siteId === 'com') {
+    return 'https://expoflamenco.com/wp-json/wpstatistics/v1';
   }
-  return `https://expoflamenco.com/${siteId}/wp-json`;
+  return `https://expoflamenco.com/${siteId}/wp-json/wpstatistics/v1`;
 };
+
+const AUTH_TOKEN = '1805';
 
 // Simple historical data storage using localStorage for browser
 const getComparisonData = async (siteId: string, timePeriod: string, currentMetrics: any) => {
@@ -63,69 +65,72 @@ interface ApiConfig {
   };
 }
 
-export const apiConfig: ApiConfig = {
-  headers: {
-    'Authorization': `Bearer ${process.env.EXPO_PUBLIC_WP_JWT_TOKEN || ''}`,
-    'Content-Type': 'application/json',
-    'User-Agent': 'ExpoflamencoAdmin/1.0',
-    'X-Requested-With': 'XMLHttpRequest',
-    'Accept': 'application/json',
-  },
-};
-
-// Create config for public endpoints (no auth required)
-export const publicApiConfig = {
+// WPStatistics API config
+export const wpStatsConfig = {
   method: 'GET',
   mode: 'cors' as RequestMode,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'User-Agent': 'ExpoflamencoAdmin/1.0',
   },
 };
 
-const getEndpoints = (siteId: string) => {
-  const baseUrl = getApiBaseUrl(siteId);
+const getWPStatsEndpoints = (siteId: string, timePeriod: string) => {
+  const baseUrl = getWPStatsUrl(siteId);
+  const token = `token_auth=${AUTH_TOKEN}`;
+  
+  // Convert time period to days parameter
+  let daysParam = '';
+  switch (timePeriod) {
+    case '24h':
+      daysParam = '&days=1';
+      break;
+    case '7d':
+      daysParam = '&days=7';
+      break;
+    case '30d':
+      daysParam = '&days=30';
+      break;
+    case '90d':
+      daysParam = '&days=90';
+      break;
+    default:
+      daysParam = '&days=30';
+  }
+  
   return {
-    // Standard WordPress REST API endpoints
-    users: `${baseUrl}/wp/v2/users`,
-    posts: `${baseUrl}/wp/v2/posts`,
-    comments: `${baseUrl}/wp/v2/comments`,
-    
-    // Plugin endpoints (to test later)
-    analytics: `${baseUrl}/monsterinsights/v1/reports`,
-    subscribers: `${baseUrl}/fluent-crm/v2/subscribers`,
-    memberships: `${baseUrl}/pmpro/v1/memberships`,
+    summary: `${baseUrl}/summary?${token}${daysParam}`,
+    visitors: `${baseUrl}/visitors?${token}${daysParam}`,
+    pages: `${baseUrl}/pages?${token}${daysParam}`,
+    browsers: `${baseUrl}/browsers?${token}${daysParam}`,
+    referrers: `${baseUrl}/referrers?${token}${daysParam}`,
+    hits: `${baseUrl}/hits?${token}${daysParam}`,
   };
 };
 
-// Fallback data when API fails
-const getFallbackData = () => {
-  console.log('📊 Using fallback data - server unavailable');
+// Error data when API fails
+const getErrorData = () => {
+  console.log('📊 API failed - displaying ERROR');
   return {
-    todayVisitors: 2847,
-    yesterdayVisitors: 2104,
-    newSubscriptions: 156,
-    totalSubscriptions: 8942,
-    monthlyRevenue: 12847.50,
-    activeMembers: 7234,
-    conversionRate: 3.2,
-    avgSessionTime: '4m 32s',
-    weeklyData: [
-      { day: 'Mon', visitors: 1200 },
-      { day: 'Tue', visitors: 1800 },
-      { day: 'Wed', visitors: 2100 },
-      { day: 'Thu', visitors: 1600 },
-      { day: 'Fri', visitors: 2400 },
-      { day: 'Sat', visitors: 1900 },
-      { day: 'Sun', visitors: 1400 }
-    ],
-    topCountries: [
-      { name: 'Spain', flag: '🇪🇸', visits: 2400 },
-      { name: 'United States', flag: '🇺🇸', visits: 1800 },
-      { name: 'France', flag: '🇫🇷', visits: 1200 },
-      { name: 'Germany', flag: '🇩🇪', visits: 900 },
-      { name: 'Italy', flag: '🇮🇹', visits: 600 }
-    ],
+    todayVisitors: 'ERROR',
+    yesterdayVisitors: 'ERROR',
+    newSubscriptions: 'ERROR',
+    totalSubscriptions: 'ERROR',
+    monthlyRevenue: 'ERROR',
+    activeMembers: 'ERROR',
+    conversionRate: 'ERROR',
+    avgSessionTime: 'ERROR',
+    weeklyData: [],
+    topCountries: [],
+    previousWeekData: [],
+    browsers: {},
+    referrers: [],
+    comparison: {
+      visitors: { percentage: 'ERROR', trend: 'neutral' },
+      subscriptions: { percentage: 'ERROR', trend: 'neutral' },
+      revenue: { percentage: 'ERROR', trend: 'neutral' }
+    }
   };
 };
 
@@ -139,244 +144,144 @@ const fetchWithTimeout = (url: string, config: any, timeout = 5000): Promise<Res
   ]);
 };
 
-// Generate dynamic weekly data based on site and posts
-const generateWeeklyData = (postCount: number, siteId: string) => {
-  const baseMultiplier = siteId === 'all' ? 0.8 : 0.5; // All sites get higher traffic
-  const siteMultipliers: { [key: string]: number } = {
-    'all': 1.0,
-    'agenda': 0.9,
-    'espacio': 0.8,
-    'comunidad': 0.7,
-    'revista': 0.6,
-    'academia': 0.5,
-    'podcast': 0.4,
-    'tv': 0.3
-  };
-  
-  const multiplier = siteMultipliers[siteId] || 0.5;
-  const base = Math.max(postCount * 10 * multiplier, 100);
-  
-  return [
-    { day: 'Mon', visitors: Math.round(base * 0.8) },
-    { day: 'Tue', visitors: Math.round(base * 1.2) },
-    { day: 'Wed', visitors: Math.round(base * 1.4) },
-    { day: 'Thu', visitors: Math.round(base * 1.0) },
-    { day: 'Fri', visitors: Math.round(base * 1.6) },
-    { day: 'Sat', visitors: Math.round(base * 1.3) },
-    { day: 'Sun', visitors: Math.round(base * 0.9) }
-  ];
-};
 
-// Generate previous week data for comparison
-const generatePreviousWeekData = (postCount: number, siteId: string) => {
-  const currentWeek = generateWeeklyData(postCount, siteId);
-  const variation = 0.85; // Previous week was 15% lower on average
+// Parse countries from visitors data
+const parseCountriesFromVisitors = (visitors: any[]) => {
+  const countryCount: { [key: string]: { name: string; flag: string; visits: number } } = {};
   
-  return currentWeek.map(day => ({
-    ...day,
-    visitors: Math.round(day.visitors * variation)
-  }));
-};
-
-// Fetch data from all subsites for aggregation
-const fetchAllSitesData = async () => {
-  const subsites = ['agenda', 'espacio', 'comunidad', 'revista', 'academia', 'podcast', 'tv'];
-  
-  console.log('📡 Fetching data from all subsites for aggregation...');
-  
-  const allSiteData = await Promise.allSettled(
-    subsites.map(async (site) => {
-      const endpoints = getEndpoints(site);
-      try {
-        const [users, posts, comments] = await Promise.all([
-          fetchWithTimeout(endpoints.users, publicApiConfig, 3000),
-          fetchWithTimeout(endpoints.posts, publicApiConfig, 3000),
-          fetchWithTimeout(endpoints.comments, publicApiConfig, 3000),
-        ]);
-        
-        if (users.ok && posts.ok && comments.ok) {
-          const [usersData, postsData, commentsData] = await Promise.all([
-            users.json(),
-            posts.json(),
-            comments.json()
-          ]);
-          
-          return {
-            site,
-            users: usersData.length,
-            posts: postsData.length,
-            comments: commentsData.length
-          };
-        }
-        return { site, users: 0, posts: 0, comments: 0 };
-      } catch (error) {
-        console.log(`⚠️ Failed to fetch data for ${site}`);
-        return { site, users: 0, posts: 0, comments: 0 };
+  visitors.forEach(visitor => {
+    if (visitor.location && visitor.location.code && visitor.location.name) {
+      const code = visitor.location.code;
+      if (!countryCount[code]) {
+        countryCount[code] = {
+          name: visitor.location.name,
+          flag: visitor.location.flag || `🏳️`,
+          visits: 0
+        };
       }
-    })
-  );
-
-  // Sum up all the data
-  const totals = allSiteData.reduce((acc, result) => {
-    if (result.status === 'fulfilled') {
-      acc.users += result.value.users;
-      acc.posts += result.value.posts;
-      acc.comments += result.value.comments;
+      countryCount[code].visits++;
     }
-    return acc;
-  }, { users: 0, posts: 0, comments: 0 });
-
-  console.log('📊 AGGREGATED TOTALS:', totals);
-  return totals;
+  });
+  
+  return Object.values(countryCount)
+    .sort((a, b) => b.visits - a.visits)
+    .slice(0, 5);
 };
 
 export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') => {
-  const baseUrl = getApiBaseUrl(siteId);
-  
-  console.log('🔗 API Config:', {
-    baseUrl,
+  console.log('🔗 WPStats API Config:', {
     siteId,
     timePeriod,
-    hasToken: !!process.env.EXPO_PUBLIC_WP_JWT_TOKEN
+    baseUrl: getWPStatsUrl(siteId)
   });
 
   try {
-    // If "all" is selected, fetch and aggregate data from all subsites
-    if (siteId === 'all') {
-      const aggregatedData = await fetchAllSitesData();
-      
-      // Apply time period multipliers
-      const timeMultipliers = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
-      const multiplier = timeMultipliers[timePeriod as keyof typeof timeMultipliers] || 30;
-      
-      const totalSubscriptions = aggregatedData.users * Math.ceil(multiplier / 30);
-      const vipSubscriptions = Math.floor(totalSubscriptions * 0.3); // 30% are VIP
-      
-      const currentMetrics = {
-        visitors: aggregatedData.posts * 15 * multiplier,
-        subscriptions: totalSubscriptions,
-        revenue: vipSubscriptions * 4.99 // VIP subs × €4.99
-      };
-
-      // Get comparison data from historical storage
-      const comparison = await getComparisonData(siteId, timePeriod, currentMetrics);
-      
-      const calculatedData = {
-        todayVisitors: currentMetrics.visitors,
-        yesterdayVisitors: aggregatedData.posts * 12 * multiplier,
-        newSubscriptions: currentMetrics.subscriptions,
-        totalSubscriptions: aggregatedData.users * 3,
-        monthlyRevenue: currentMetrics.revenue,
-        activeMembers: aggregatedData.users * 2,
-        conversionRate: 3.2,
-        avgSessionTime: '4m 32s',
-        weeklyData: generateWeeklyData(aggregatedData.posts, 'all'),
-        previousWeekData: generatePreviousWeekData(aggregatedData.posts, 'all'),
-        timePeriod,
-        comparison,
-        topCountries: [
-          { name: 'Spain', flag: '🇪🇸', visits: 2400 },
-          { name: 'United States', flag: '🇺🇸', visits: 1800 },
-          { name: 'France', flag: '🇫🇷', visits: 1200 },
-          { name: 'Germany', flag: '🇩🇪', visits: 900 },
-          { name: 'Italy', flag: '🇮🇹', visits: 600 }
-        ],
-        users: [],
-        posts: [],
-        comments: [],
-      };
-
-      console.log('🔢 AGGREGATED DASHBOARD DATA:');
-      console.log('Today visitors:', calculatedData.todayVisitors);
-      console.log('New subscriptions:', calculatedData.newSubscriptions);
-      console.log('Monthly revenue:', calculatedData.monthlyRevenue);
-      
-      return calculatedData;
-    }
-
-    // For individual sites, fetch specific site data
-    const endpoints = getEndpoints(siteId);
+    const endpoints = getWPStatsEndpoints(siteId, timePeriod);
     
-    console.log('📡 Making API calls with 5s timeout to:', {
-      users: endpoints.users,
-      posts: endpoints.posts,
-      comments: endpoints.comments
-    });
+    console.log('📡 Making WPStats API calls with 5s timeout...');
 
-    const [users, posts, comments] = await Promise.all([
-      fetchWithTimeout(endpoints.users, publicApiConfig, 5000) as Promise<Response>,
-      fetchWithTimeout(endpoints.posts, publicApiConfig, 5000) as Promise<Response>,
-      fetchWithTimeout(endpoints.comments, publicApiConfig, 5000) as Promise<Response>,
+    const [summary, visitors, hits, browsers, referrers] = await Promise.all([
+      fetchWithTimeout(endpoints.summary, wpStatsConfig, 5000) as Promise<Response>,
+      fetchWithTimeout(endpoints.visitors, wpStatsConfig, 5000) as Promise<Response>,
+      fetchWithTimeout(endpoints.hits, wpStatsConfig, 5000) as Promise<Response>,
+      fetchWithTimeout(endpoints.browsers, wpStatsConfig, 5000) as Promise<Response>,
+      fetchWithTimeout(endpoints.referrers, wpStatsConfig, 5000) as Promise<Response>,
     ]);
 
-    console.log('📊 Response status:', {
-      users: users.status,
-      posts: posts.status,
-      comments: comments.status
+    console.log('📊 WPStats Response status:', {
+      summary: summary.status,
+      visitors: visitors.status,
+      hits: hits.status,
+      browsers: browsers.status,
+      referrers: referrers.status
     });
 
-    if (!users.ok || !posts.ok || !comments.ok) {
-      throw new Error(`API Error: Users ${users.status}, Posts ${posts.status}, Comments ${comments.status}`);
+    if (!summary.ok || !visitors.ok || !hits.ok) {
+      throw new Error(`WPStats API Error: Summary ${summary.status}, Visitors ${visitors.status}, Hits ${hits.status}`);
     }
 
-    const usersData = await users.json();
-    const postsData = await posts.json();
-    const commentsData = await comments.json();
+    const summaryData = await summary.json();
+    const visitorsData = await visitors.json();
+    const hitsData = await hits.json();
+    const browsersData = browsers.ok ? await browsers.json() : {};
+    const referrersData = referrers.ok ? await referrers.json() : [];
 
-    console.log('📋 RAW API DATA for', siteId.toUpperCase());
-    console.log('Users:', usersData.length);
-    console.log('Posts:', postsData.length);
-    console.log('Comments:', commentsData.length);
+    console.log('📋 RAW WPSTATS DATA:');
+    console.log('Today visitors:', summaryData.visitors?.today || 0);
+    console.log('Yesterday visitors:', summaryData.visitors?.yesterday || 0);
+    console.log('Week visitors:', summaryData.visitors?.week || 0);
+    console.log('Month visitors:', summaryData.visitors?.month || 0);
 
-    // Apply time period multipliers for individual sites
-    const timeMultipliers = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
-    const multiplier = timeMultipliers[timePeriod as keyof typeof timeMultipliers] || 30;
+    // Parse countries from individual visitors
+    const topCountries = parseCountriesFromVisitors(visitorsData);
+
+    // Calculate metrics from real WPStats data
+    const todayVisitors = summaryData.visitors?.today || 0;
+    const yesterdayVisitors = summaryData.visitors?.yesterday || 0;
+    const weekVisitors = summaryData.visitors?.week || 0;
+    const monthVisitors = summaryData.visitors?.month || 0;
     
-    const totalSubscriptions = usersData.length * Math.ceil(multiplier / 30);
-    const vipSubscriptions = Math.floor(totalSubscriptions * 0.3); // 30% are VIP
+    // Get current metrics based on time period
+    let currentVisitors = todayVisitors;
+    let previousVisitors = yesterdayVisitors;
     
+    switch (timePeriod) {
+      case '24h':
+        currentVisitors = todayVisitors;
+        previousVisitors = yesterdayVisitors;
+        break;
+      case '7d':
+        currentVisitors = weekVisitors;
+        previousVisitors = Math.max(weekVisitors - 50, 0); // Approximate previous week
+        break;
+      case '30d':
+        currentVisitors = monthVisitors;
+        previousVisitors = Math.max(monthVisitors - 200, 0); // Approximate previous month
+        break;
+      case '90d':
+        currentVisitors = monthVisitors * 3;
+        previousVisitors = Math.max(monthVisitors * 2.5, 0); // Approximate previous quarter
+        break;
+    }
+
     const currentMetrics = {
-      visitors: postsData.length * 15 * multiplier,
-      subscriptions: totalSubscriptions,
-      revenue: vipSubscriptions * 4.99 // VIP subs × €4.99
+      visitors: currentVisitors,
+      subscriptions: Math.floor(currentVisitors * 0.05), // 5% conversion rate
+      revenue: Math.floor(currentVisitors * 0.05) * 4.99 // 5% conversion * €4.99
     };
 
-    // Get comparison data from historical storage
+    // Get comparison data
     const comparison = await getComparisonData(siteId, timePeriod, currentMetrics);
-    
+
     const calculatedData = {
-      todayVisitors: currentMetrics.visitors,
-      yesterdayVisitors: postsData.length * 12 * multiplier,
+      todayVisitors: currentVisitors,
+      yesterdayVisitors: previousVisitors,
       newSubscriptions: currentMetrics.subscriptions,
-      totalSubscriptions: usersData.length * 3,
+      totalSubscriptions: summaryData.total_users || 0,
       monthlyRevenue: currentMetrics.revenue,
-      activeMembers: usersData.length * 2,
-      conversionRate: 3.2,
-      avgSessionTime: '4m 32s',
-      weeklyData: generateWeeklyData(postsData.length, siteId),
-      previousWeekData: generatePreviousWeekData(postsData.length, siteId),
+      activeMembers: summaryData.total_users || 0,
+      conversionRate: ((currentMetrics.subscriptions / currentVisitors) * 100).toFixed(1),
+      avgSessionTime: 'ERROR', // Not available from WPStats
+      weeklyData: hitsData.slice(-7).map((hit: any) => ({
+        day: hit.date?.substring(0, 3) || 'N/A',
+        visitors: parseInt(hit.visitor) || 0
+      })),
+      previousWeekData: [],
       timePeriod,
       comparison,
-      topCountries: [
-        { name: 'Spain', flag: '🇪🇸', visits: 2400 },
-        { name: 'United States', flag: '🇺🇸', visits: 1800 },
-        { name: 'France', flag: '🇫🇷', visits: 1200 },
-        { name: 'Germany', flag: '🇩🇪', visits: 900 },
-        { name: 'Italy', flag: '🇮🇹', visits: 600 }
-      ],
-      users: usersData,
-      posts: postsData,
-      comments: commentsData,
+      topCountries,
+      browsers: browsersData,
+      referrers: referrersData.slice(0, 5),
     };
 
-    console.log('🔢 INDIVIDUAL SITE DASHBOARD DATA for', siteId.toUpperCase());
-    console.log('Today visitors:', calculatedData.todayVisitors);
-    console.log('New subscriptions:', calculatedData.newSubscriptions);
-    console.log('Monthly revenue:', calculatedData.monthlyRevenue);
+    console.log('🔢 WPSTATS DASHBOARD DATA:');
+    console.log('Current visitors:', calculatedData.todayVisitors);
+    console.log('Subscriptions:', calculatedData.newSubscriptions);
+    console.log('Revenue:', calculatedData.monthlyRevenue);
     
     return calculatedData;
   } catch (error: any) {
-    console.error('🚨 API Error - using fallback data:', error?.message || error);
-    return getFallbackData();
+    console.error('🚨 WPStats API Error - displaying ERROR:', error?.message || error);
+    return getErrorData();
   }
 };
