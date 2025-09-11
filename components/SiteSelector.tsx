@@ -16,10 +16,10 @@ interface Site {
 
 const mockSites: Site[] = [
   {
-    id: 'all',
-    name: 'All Sites Overview',
-    url: 'all-sites',
-    language: 'global',
+    id: 'com',
+    name: 'Expoflamenco.com',
+    url: 'expoflamenco.com',
+    language: 'Main Site',
     flag: '🌍',
     status: 'active',
     subscribers: 15438,
