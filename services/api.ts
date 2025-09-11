@@ -7,9 +7,20 @@ const getWPStatsUrl = (siteId: string) => {
 
 const AUTH_TOKEN = '1805';
 
-// Simple historical data storage using localStorage for browser
+import { Platform } from 'react-native';
+
+// Simple historical data storage - only use localStorage on web
 const getComparisonData = async (siteId: string, timePeriod: string, currentMetrics: any) => {
   try {
+    // Skip localStorage on native platforms to avoid errors
+    if (Platform.OS !== 'web') {
+      return {
+        visitors: { percentage: '0%', trend: 'neutral' },
+        subscriptions: { percentage: '0%', trend: 'neutral' },
+        revenue: { percentage: '0%', trend: 'neutral' }
+      };
+    }
+
     const key = `historical_${siteId}_${timePeriod}`;
     const stored = localStorage.getItem(key);
     const previous = stored ? JSON.parse(stored) : { visitors: 0, subscriptions: 0, revenue: 0 };
@@ -39,7 +50,7 @@ const getComparisonData = async (siteId: string, timePeriod: string, currentMetr
       }
     };
     
-    // Store current data for next comparison
+    // Store current data for next comparison (only on web)
     localStorage.setItem(key, JSON.stringify(currentMetrics));
     
     console.log(`📊 Comparison for ${siteId} (${timePeriod}):`, comparison);
