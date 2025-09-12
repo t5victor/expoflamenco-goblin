@@ -1,217 +1,218 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { 
+  Dimensions, 
+  ScrollView, 
+  StyleSheet, 
+  Text, 
+  View, 
+  Image, 
+  TouchableOpacity, 
+  Platform 
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-// Mock analytics data for detailed view
-const mockAnalyticsData = {
-  weeklyVisitors: [
-    { day: 'Mon', visitors: 245 },
-    { day: 'Tue', visitors: 312 },
-    { day: 'Wed', visitors: 278 },
-    { day: 'Thu', visitors: 396 },
-    { day: 'Fri', visitors: 442 },
-    { day: 'Sat', visitors: 518 },
-    { day: 'Sun', visitors: 389 },
-  ],
-  topPages: [
-    { page: '/flamenco-courses', views: 1247, percentage: 28.5 },
-    { page: '/events', views: 892, percentage: 20.4 },
-    { page: '/about', views: 673, percentage: 15.4 },
-    { page: '/contact', views: 445, percentage: 10.2 },
-    { page: '/blog', views: 312, percentage: 7.1 },
-  ],
-  userSources: [
-    { source: 'Organic Search', users: 1847, percentage: 45.2 },
-    { source: 'Direct', users: 892, percentage: 21.8 },
-    { source: 'Social Media', users: 673, percentage: 16.5 },
-    { source: 'Email', users: 445, percentage: 10.9 },
-    { source: 'Referral', users: 231, percentage: 5.6 },
-  ]
-};
-
-interface AnalyticsCardProps {
+interface ActionItemProps {
+  icon: string;
   title: string;
-  children: React.ReactNode;
+  description: string;
+  onPress: () => void;
+  accentColor: string;
 }
 
-const AnalyticsCard: React.FC<AnalyticsCardProps> = ({ title, children }) => {
+const ActionItem: React.FC<ActionItemProps> = ({ 
+  icon, 
+  title, 
+  description, 
+  onPress, 
+  accentColor 
+}) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   return (
-    <View style={[
-      styles.card,
-      { 
-        backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-        borderColor: isDark ? '#333' : '#E0E0E0'
-      }
-    ]}>
-      <Text style={[
-        styles.cardTitle,
-        { color: isDark ? '#FFFFFF' : '#333333' }
-      ]}>
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-};
-
-interface SimpleBarChartProps {
-  data: Array<{ day: string; visitors: number }>;
-}
-
-const SimpleBarChart: React.FC<SimpleBarChartProps> = ({ data }) => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const maxValue = Math.max(...data.map(d => d.visitors));
-
-  return (
-    <View style={styles.chartContainer}>
-      {data.map((item, index) => (
-        <View key={index} style={styles.barContainer}>
+    <View style={styles.cardWrapper}>
+      <View style={[
+        styles.shadowCard,
+        { backgroundColor: isDark ? '#333' : '#E5E5E5' }
+      ]} />
+      <TouchableOpacity style={[
+        styles.actionItem,
+        {
+          backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+          borderColor: isDark ? '#333' : '#E0E0E0',
+        }
+      ]} onPress={onPress}>
+        <View style={styles.cardHeader}>
           <Text style={[
-            styles.barValue,
+            styles.actionTitle,
             { color: isDark ? '#CCCCCC' : '#666666' }
           ]}>
-            {item.visitors}
+            {title}
           </Text>
-          <View 
-            style={[
-              styles.bar,
-              { 
-                height: (item.visitors / maxValue) * 100,
-                backgroundColor: '#4CAF50'
-              }
-            ]} 
-          />
-          <Text style={[
-            styles.barLabel,
-            { color: isDark ? '#CCCCCC' : '#666666' }
-          ]}>
-            {item.day}
-          </Text>
+          <Feather name="more-horizontal" size={20} color={isDark ? '#666' : '#999'} />
         </View>
-      ))}
+        <View style={styles.cardContent}>
+          <Feather name={icon} size={32} color={accentColor} />
+          <View style={styles.textContent}>
+            <Text style={[
+              styles.actionDescription,
+              { color: isDark ? '#FFFFFF' : '#000000' }
+            ]}>
+              {description}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
     </View>
   );
 };
 
-export default function AnalyticsScreen() {
+export default function ExpoFlamencoCommandCenter() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const router = useRouter();
+  const isWeb = Platform.OS === 'web';
+  const isMobile = screenWidth < 768;
+
+  const actionItems = [
+    {
+      icon: 'trending-up',
+      title: 'Analytics Dashboard', 
+      description: 'View detailed analytics and website insights',
+      onPress: () => router.push('/(tabs)/analytics'),
+      accentColor: '#4CAF50'
+    },
+    {
+      icon: 'monitor',
+      title: 'Admin Console',
+      description: 'Manage system settings and configurations', 
+      onPress: () => router.push('/(tabs)/admin'),
+      accentColor: '#2196F3'
+    },
+    {
+      icon: 'user',
+      title: 'User Management',
+      description: 'View and manage user accounts and permissions',
+      onPress: () => router.push('/(tabs)/users'),
+      accentColor: '#FF9800'
+    },
+    {
+      icon: 'dollar-sign',
+      title: 'Subscriptions',
+      description: 'Monitor subscription metrics and billing',
+      onPress: () => router.push('/(tabs)/subscriptions'),
+      accentColor: '#9C27B0'
+    },
+    {
+      icon: 'tool',
+      title: 'System Settings',
+      description: 'Configure application settings and preferences',
+      onPress: () => router.push('/(tabs)/explore'),
+      accentColor: '#607D8B'
+    }
+  ];
 
   return (
     <SafeAreaView style={[
       styles.container,
       { backgroundColor: isDark ? '#000000' : '#F5F5F5' }
     ]}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[
-            styles.headerTitle,
-            { color: isDark ? '#FFFFFF' : '#000000' }
-          ]}>
-            Analytics Overview
-          </Text>
-          <Text style={[
-            styles.headerSubtitle,
-            { color: isDark ? '#CCCCCC' : '#666666' }
-          ]}>
-            Detailed insights from MonsterInsights
-          </Text>
-        </View>
-
-        {/* Weekly Visitors Chart */}
-        <View style={styles.section}>
-          <AnalyticsCard title="Weekly Visitors">
-            <SimpleBarChart data={mockAnalyticsData.weeklyVisitors} />
-          </AnalyticsCard>
-        </View>
-
-        {/* Top Pages */}
-        <View style={styles.section}>
-          <AnalyticsCard title="Top Pages This Week">
-            <View style={styles.listContainer}>
-              {mockAnalyticsData.topPages.map((page, index) => (
-                <View key={index} style={styles.listItem}>
-                  <View style={styles.listItemLeft}>
-                    <Text style={[
-                      styles.listItemTitle,
-                      { color: isDark ? '#FFFFFF' : '#000000' }
-                    ]}>
-                      {page.page}
-                    </Text>
-                    <Text style={[
-                      styles.listItemSubtitle,
-                      { color: isDark ? '#CCCCCC' : '#666666' }
-                    ]}>
-                      {page.views.toLocaleString()} views
-                    </Text>
-                  </View>
-                  <Text style={[
-                    styles.listItemPercentage,
-                    { color: isDark ? '#4CAF50' : '#2E7D32' }
-                  ]}>
-                    {page.percentage}%
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </AnalyticsCard>
-        </View>
-
-        {/* User Sources */}
-        <View style={styles.section}>
-          <AnalyticsCard title="Traffic Sources">
-            <View style={styles.listContainer}>
-              {mockAnalyticsData.userSources.map((source, index) => (
-                <View key={index} style={styles.listItem}>
-                  <View style={styles.listItemLeft}>
-                    <Text style={[
-                      styles.listItemTitle,
-                      { color: isDark ? '#FFFFFF' : '#000000' }
-                    ]}>
-                      {source.source}
-                    </Text>
-                    <Text style={[
-                      styles.listItemSubtitle,
-                      { color: isDark ? '#CCCCCC' : '#666666' }
-                    ]}>
-                      {source.users.toLocaleString()} users
-                    </Text>
-                  </View>
-                  <Text style={[
-                    styles.listItemPercentage,
-                    { color: isDark ? '#2196F3' : '#1976D2' }
-                  ]}>
-                    {source.percentage}%
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </AnalyticsCard>
-        </View>
-
-        {/* API Integration Info */}
-        <View style={styles.section}>
-          <AnalyticsCard title="Data Integration">
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Hero Section */}
+        <View style={[
+          styles.heroSection,
+          { paddingHorizontal: isWeb && !isMobile ? 40 : 20 }
+        ]}>
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('@/assets/images/EF512.png')}
+              style={styles.heroLogo}
+              resizeMode="contain"
+            />
+          </View>
+          
+          <View style={styles.heroTextContainer}>
             <Text style={[
-              styles.infoText,
+              styles.heroTitle,
+              { color: isDark ? '#FFFFFF' : '#000000' }
+            ]}>
+              ExpoFlamenco Command Center
+            </Text>
+            <Text style={[
+              styles.heroSubtitle,
               { color: isDark ? '#CCCCCC' : '#666666' }
             ]}>
-              This analytics view will integrate with:
-              {'\n\n'}• MonsterInsights for detailed website analytics
-              {'\n'}• Google Analytics API for real-time data
-              {'\n'}• FluentCRM for user engagement metrics
-              {'\n'}• Paid Memberships Pro for subscription analytics
-              {'\n\n'}Configure your API credentials in the Settings tab to display live data.
+              Professional analytics and management platform for your flamenco business
             </Text>
-          </AnalyticsCard>
+          </View>
+        </View>
+
+        {/* Action Items Grid */}
+        <View style={[
+          styles.actionsSection,
+          { paddingHorizontal: isWeb && !isMobile ? 40 : 20 }
+        ]}>
+          <Text style={[
+            styles.sectionTitle,
+            { color: isDark ? '#FFFFFF' : '#000000' }
+          ]}>
+            Quick Actions
+          </Text>
+          
+          <View style={[
+            styles.actionsGrid,
+            isWeb && !isMobile && styles.actionsGridDesktop
+          ]}>
+            {actionItems.map((item, index) => (
+              <ActionItem
+                key={index}
+                icon={item.icon}
+                title={item.title}
+                description={item.description}
+                onPress={item.onPress}
+                accentColor={item.accentColor}
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* Status Card */}
+        <View style={[
+          styles.statusSection,
+          { paddingHorizontal: isWeb && !isMobile ? 40 : 20 }
+        ]}>
+          <View style={[
+            styles.statusCard,
+            {
+              backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+              borderColor: isDark ? '#333' : '#E0E0E0',
+            }
+          ]}>
+            <View style={styles.statusHeader}>
+              <View style={[styles.statusIndicator, { backgroundColor: '#4CAF50' }]} />
+              <Text style={[
+                styles.statusTitle,
+                { color: isDark ? '#FFFFFF' : '#000000' }
+              ]}>
+                System Status
+              </Text>
+            </View>
+            <Text style={[
+              styles.statusDescription,
+              { color: isDark ? '#CCCCCC' : '#666666' }
+            ]}>
+              All systems operational. Ready to manage your flamenco platform.
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -225,25 +226,120 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+  scrollContent: {
+    paddingBottom: 40,
   },
-  headerTitle: {
-    fontSize: 28,
+  heroSection: {
+    paddingTop: 40,
+    paddingBottom: 60,
+    alignItems: 'center',
+  },
+  logoContainer: {
+    marginBottom: 30,
+    alignItems: 'center',
+  },
+  heroLogo: {
+    width: 120,
+    height: 120,
+    borderRadius: 20,
+  },
+  heroTextContainer: {
+    alignItems: 'center',
+    maxWidth: 600,
+  },
+  heroTitle: {
+    fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 4,
+    textAlign: 'center',
+    marginBottom: 12,
+    lineHeight: 38,
   },
-  headerSubtitle: {
-    fontSize: 16,
-  },
-  section: {
+  heroSubtitle: {
+    fontSize: 18,
+    textAlign: 'center',
+    lineHeight: 26,
     paddingHorizontal: 20,
-    marginBottom: 20,
   },
-  card: {
+  actionsSection: {
+    paddingBottom: 40,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginBottom: 24,
+  },
+  actionsGrid: {
+    gap: 20,
+  },
+  actionsGridDesktop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  cardWrapper: {
+    position: 'relative',
+    ...Platform.select({
+      web: {
+        maxWidth: '48%',
+      },
+    }),
+  },
+  shadowCard: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: -6,
+    bottom: -6,
+    borderRadius: 16,
+    zIndex: 0,
+  },
+  actionItem: {
+    position: 'relative',
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    zIndex: 1,
+    minHeight: 120,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      },
+    }),
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  textContent: {
+    flex: 1,
+  },
+  actionContent: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  actionDescription: {
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  statusSection: {
+    paddingBottom: 20,
+  },
+  statusCard: {
     padding: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: {
@@ -254,61 +350,23 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  chartContainer: {
+  statusHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 120,
-    paddingTop: 10,
-  },
-  barContainer: {
     alignItems: 'center',
-    flex: 1,
+    marginBottom: 8,
   },
-  bar: {
-    width: 20,
-    borderRadius: 4,
-    marginVertical: 4,
+  statusIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
   },
-  barLabel: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  barValue: {
-    fontSize: 10,
-    marginBottom: 4,
-  },
-  listContainer: {
-    gap: 12,
-  },
-  listItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  listItemLeft: {
-    flex: 1,
-  },
-  listItemTitle: {
+  statusTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 2,
+    fontWeight: '600',
   },
-  listItemSubtitle: {
+  statusDescription: {
     fontSize: 14,
-  },
-  listItemPercentage: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  infoText: {
-    fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 20,
   },
 });
