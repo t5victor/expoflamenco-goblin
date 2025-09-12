@@ -63,7 +63,7 @@ export default function AnalyticsScreen() {
                   styles.headerSubtitle,
                   { color: isDark ? '#9CA3AF' : '#6B7280' }
                 ]}>
-                  Detailed insights from MonsterInsights & Google Analytics
+                  Detailed insights
                 </Text>
               </View>
             </View>
