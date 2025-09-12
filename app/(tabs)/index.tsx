@@ -16,12 +16,69 @@ import { Feather } from '@expo/vector-icons';
 
 const { width: screenWidth } = Dimensions.get('window');
 
+// Puzzle-style card sizing for desktop
+const getPuzzleCardStyle = (size: string = 'medium', index: number) => {
+  const baseStyle = {
+    position: 'absolute' as const,
+  };
+  
+  switch (size) {
+    case 'large':
+      return {
+        ...baseStyle,
+        width: '63%',
+        height: 180,
+        top: 0,
+        left: 0,
+      };
+    case 'medium':
+      if (index === 1) { // Admin Console - top right
+        return {
+          ...baseStyle,
+          width: '35%',
+          height: 120,
+          top: 0,
+          right: 0,
+        };
+      } else { // Subscriptions - bottom left
+        return {
+          ...baseStyle,
+          width: '31%',
+          height: 130,
+          top: 200,
+          left: 0,
+        };
+      }
+    case 'small':
+      if (index === 2) { // User Management - middle right
+        return {
+          ...baseStyle,
+          width: '35%',
+          height: 190, // Align with bottom of Subs/Settings (200 + 130 - 140 = 190)
+          top: 140,
+          right: 0,
+        };
+      } else { // System Settings - bottom right
+        return {
+          ...baseStyle,
+          width: '31%',
+          height: 130, // Match Subscriptions height
+          top: 200,
+          left: '32%', // Moved left to align right edge with Analytics
+        };
+      }
+    default:
+      return baseStyle;
+  }
+};
+
 interface ActionItemProps {
   icon: string;
   title: string;
   description: string;
   onPress: () => void;
   accentColor: string;
+  size?: 'small' | 'medium' | 'large';
 }
 
 const ActionItem: React.FC<ActionItemProps> = ({ 
@@ -29,13 +86,51 @@ const ActionItem: React.FC<ActionItemProps> = ({
   title, 
   description, 
   onPress, 
-  accentColor 
+  accentColor,
+  size 
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const isWeb = Platform.OS === 'web';
+  const isMobile = screenWidth < 768;
 
+  // Mobile: Simple horizontal layout (NO gray backgrounds, NO card headers)
+  if (!isWeb || (isWeb && isMobile)) {
+    return (
+      <TouchableOpacity style={[
+        styles.actionItemMobile,
+        {
+          backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+          borderColor: isDark ? '#333' : '#E0E0E0',
+        }
+      ]} onPress={onPress}>
+        <Feather name={icon} size={28} color={accentColor} />
+        <View style={styles.actionContentMobile}>
+          <Text style={[
+            styles.actionTitleMobile,
+            { color: isDark ? '#FFFFFF' : '#000000' }
+          ]}>
+            {title}
+          </Text>
+          <Text style={[
+            styles.actionDescriptionMobile,
+            { color: isDark ? '#CCCCCC' : '#666666' }
+          ]}>
+            {description}
+          </Text>
+        </View>
+        <Feather 
+          name="chevron-right" 
+          size={20} 
+          color={isDark ? '#666' : '#999'} 
+        />
+      </TouchableOpacity>
+    );
+  }
+
+  // Desktop: Puzzle layout with gray backgrounds and card headers
   return (
-    <View style={styles.cardWrapper}>
+    <>
       <View style={[
         styles.shadowCard,
         { backgroundColor: isDark ? '#333' : '#E5E5E5' }
@@ -68,7 +163,7 @@ const ActionItem: React.FC<ActionItemProps> = ({
           </View>
         </View>
       </TouchableOpacity>
-    </View>
+    </>
   );
 };
 
@@ -85,35 +180,40 @@ export default function ExpoFlamencoCommandCenter() {
       title: 'Analytics Dashboard', 
       description: 'View detailed analytics and website insights',
       onPress: () => router.push('/(tabs)/analytics'),
-      accentColor: '#4CAF50'
+      accentColor: '#4CAF50',
+      size: 'large' // Takes more space
     },
     {
       icon: 'monitor',
       title: 'Admin Console',
       description: 'Manage system settings and configurations', 
       onPress: () => router.push('/(tabs)/admin'),
-      accentColor: '#2196F3'
+      accentColor: '#2196F3',
+      size: 'medium'
     },
     {
       icon: 'user',
       title: 'User Management',
       description: 'View and manage user accounts and permissions',
       onPress: () => router.push('/(tabs)/users'),
-      accentColor: '#FF9800'
+      accentColor: '#FF9800',
+      size: 'small'
     },
     {
       icon: 'dollar-sign',
       title: 'Subscriptions',
       description: 'Monitor subscription metrics and billing',
       onPress: () => router.push('/(tabs)/subscriptions'),
-      accentColor: '#9C27B0'
+      accentColor: '#9C27B0',
+      size: 'medium'
     },
     {
       icon: 'tool',
       title: 'System Settings',
       description: 'Configure application settings and preferences',
       onPress: () => router.push('/(tabs)/explore'),
-      accentColor: '#607D8B'
+      accentColor: '#607D8B',
+      size: 'small'
     }
   ];
 
@@ -172,16 +272,36 @@ export default function ExpoFlamencoCommandCenter() {
             styles.actionsGrid,
             isWeb && !isMobile && styles.actionsGridDesktop
           ]}>
-            {actionItems.map((item, index) => (
-              <ActionItem
-                key={index}
-                icon={item.icon}
-                title={item.title}
-                description={item.description}
-                onPress={item.onPress}
-                accentColor={item.accentColor}
-              />
-            ))}
+            {actionItems.map((item, index) => {
+              // Mobile: No wrapper needed, ActionItem handles its own layout
+              if (!isWeb || (isWeb && isMobile)) {
+                return (
+                  <ActionItem
+                    key={index}
+                    icon={item.icon}
+                    title={item.title}
+                    description={item.description}
+                    onPress={item.onPress}
+                    accentColor={item.accentColor}
+                    size={item.size}
+                  />
+                );
+              }
+              
+              // Desktop: Use puzzle wrapper
+              return (
+                <View key={index} style={getPuzzleCardStyle(item.size, index)}>
+                  <ActionItem
+                    icon={item.icon}
+                    title={item.title}
+                    description={item.description}
+                    onPress={item.onPress}
+                    accentColor={item.accentColor}
+                    size={item.size}
+                  />
+                </View>
+              );
+            })}
           </View>
         </View>
 
@@ -272,17 +392,46 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   actionsGridDesktop: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    position: 'relative',
+    height: 370, // Fixed height to contain the puzzle layout with extended cards
+    width: '100%',
   },
   cardWrapper: {
     position: 'relative',
-    ...Platform.select({
-      web: {
-        maxWidth: '48%',
-      },
-    }),
+  },
+  cardWrapperMobile: {
+    width: '100%',
+    marginBottom: 8,
+  },
+  // Mobile styles (simple horizontal layout)
+  actionItemMobile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+    minHeight: 80,
+    gap: 16,
+  },
+  actionContentMobile: {
+    flex: 1,
+  },
+  actionTitleMobile: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  actionDescriptionMobile: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   shadowCard: {
     position: 'absolute',
@@ -300,6 +449,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     zIndex: 1,
     minHeight: 120,
+    height: '100%', // Fill the puzzle container
     ...Platform.select({
       web: {
         cursor: 'pointer',
