@@ -19,6 +19,12 @@ const MAPPING = {
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
   'chart.bar.fill': 'bar-chart',
+  // Added to match web iconography used in tabs
+  'square.grid.2x2.fill': 'apps',
+  'person.2.fill': 'group',
+  'gearshape.fill': 'settings',
+  'bookmark.fill': 'bookmark',
+  'creditcard.fill': 'credit-card',
 } as IconMapping;
 
 /**
