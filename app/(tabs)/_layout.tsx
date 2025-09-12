@@ -16,8 +16,10 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#3B82F6',
-        tabBarInactiveTintColor: colorScheme === 'dark' ? '#9CA3AF' : '#6B7280',
+        tabBarActiveTintColor: Platform.OS === 'ios' ? '#007AFF' : '#3B82F6', // Use iOS system blue for better glass integration
+        tabBarInactiveTintColor: Platform.OS === 'ios' 
+          ? (colorScheme === 'dark' ? '#8E8E93' : '#8E8E93') // iOS system gray
+          : (colorScheme === 'dark' ? '#9CA3AF' : '#6B7280'),
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
@@ -26,15 +28,23 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
         tabBarStyle: isMobile ? {
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          height: 96,
+          paddingBottom: 18,
+          paddingTop: 18,
           borderTopWidth: 0,
-          backgroundColor: colorScheme === 'dark' ? '#1F2937' : '#FFFFFF',
+          backgroundColor: 'transparent',
           ...Platform.select({
             ios: {
               position: 'absolute',
+              bottom: 18,
+              left: 32,
+              right: 32,
+              borderRadius: 36,
+              overflow: 'hidden',
             },
+            default: {
+              backgroundColor: colorScheme === 'dark' ? '#1F2937' : '#FFFFFF',
+            }
           }),
         } : { display: 'none' },
       }}>
@@ -42,14 +52,7 @@ export default function TabLayout() {
         name="admin"
         options={{
           title: 'Dashboard',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: 'Analytics',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.line.uptrend.xyaxis" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="square.grid.2x2.fill" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -60,7 +63,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="subscriptions"
+        options={{
+          title: 'Subscriptions',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="creditcard.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="index"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="analytics"
         options={{
           href: null,
         }}

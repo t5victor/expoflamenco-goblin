@@ -1,18 +1,27 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { BlurView } from 'expo-blur';
 import { StyleSheet } from 'react-native';
+import { GlassView } from 'expo-glass-effect';
 
 export default function BlurTabBarBackground() {
   return (
-    <BlurView
-      // System chrome material automatically adapts to the system's theme
-      // and matches the native tab bar appearance on iOS.
-      tint="systemChromeMaterial"
-      intensity={100}
-      style={StyleSheet.absoluteFill}
+    <GlassView
+      style={[StyleSheet.absoluteFill, styles.glassBackground]}
+      glassEffectStyle="clear"
     />
   );
 }
+
+const styles = StyleSheet.create({
+  glassBackground: {
+    flex: 1,
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  glassContainer: {
+    // Ensures the glass effect covers the entire tab bar area
+    overflow: 'hidden',
+  },
+});
 
 export function useBottomTabOverflow() {
   return useBottomTabBarHeight();
