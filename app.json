@@ -49,6 +49,12 @@
         "projectId": "040d843d-7959-48ae-8ec1-977b5756d9dc"
       }
     },
-    "owner": "expovictor6"
+    "owner": "expovictor6",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/040d843d-7959-48ae-8ec1-977b5756d9dc"
+    }
   }
 }

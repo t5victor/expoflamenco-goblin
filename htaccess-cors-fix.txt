@@ -1,0 +1,41 @@
+# =========================================================
+# BEGIN WordPress Multisite  (Expoflamenco)
+# =========================================================
+
+<IfModule mod_headers.c>
+  <IfModule mod_setenvif.c>
+    # Permitir desde localhost (Expo dev), dominios expoflamenco.* y CDN Bunny
+    SetEnvIfNoCase Origin "^https?://(localhost(:[0-9]+)?|127\.0\.0\.1(:[0-9]+)?|([a-z0-9-]+\.)?expoflamenco\.(com|es|fr|de|it|jp|world)(:[0-9]+)?|[a-z0-9-]+\.b-cdn\.net)(/.*)?$" ACAO=$0
+
+    # Cabeceras CORS coherentes - UPDATED TO INCLUDE EXPO HEADERS
+    Header always set Access-Control-Allow-Origin "%{ACAO}e" env=ACAO
+    Header always set Access-Control-Allow-Credentials "true" env=ACAO
+    Header always set Vary "Origin"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" env=ACAO
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-WP-Nonce, User-Agent, Accept, X-Requested-With" env=ACAO
+    Header always set Access-Control-Expose-Headers "X-WP-Total, X-WP-TotalPages, Link" env=ACAO
+    Header always set Access-Control-Max-Age "3600" env=ACAO
+
+    # Permitir acceso específico a WP Statistics API - UPDATED
+    <Files ~ "^wp-json/wpstatistics/.*">
+      Header always set Access-Control-Allow-Origin "%{ACAO}e" env=ACAO
+      Header always set Access-Control-Allow-Credentials "true" env=ACAO
+      Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" env=ACAO
+      Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-WP-Nonce, User-Agent, Accept, X-Requested-With" env=ACAO
+    </Files>
+  </IfModule>
+</IfModule>
+
+# Responder rápido a preflight OPTIONS - UPDATED FOR PROPER CORS
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  
+  # Handle CORS preflight requests properly
+  RewriteCond %{REQUEST_METHOD} =OPTIONS
+  RewriteCond %{HTTP:Origin} ^https?://(localhost(:[0-9]+)?|127\.0\.0\.1(:[0-9]+)?|([a-z0-9-]+\.)?expoflamenco\.(com|es|fr|de|it|jp|world)(:[0-9]+)?|[a-z0-9-]+\.b-cdn\.net)(/.*)?$ [NC]
+  RewriteRule ^(.*)$ - [R=200,L,E=HTTP_ORIGIN:%{HTTP:Origin}]
+  
+  # Fallback for other OPTIONS requests
+  RewriteCond %{REQUEST_METHOD} =OPTIONS
+  RewriteRule ^ - [R=204,L]
+</IfModule>
