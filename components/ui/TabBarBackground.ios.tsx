@@ -19,8 +19,6 @@ export default function BlurTabBarBackground() {
       // iOS 26 (18.0+) should support liquid glass
       const iosVersion = parseFloat(Platform.Version as string);
       const supportsGlass = iosVersion >= 18.0;
-      
-      console.log(`iOS ${Platform.Version} - Glass effect supported: ${supportsGlass}`);
       setUseGlassEffect(supportsGlass);
     };
 

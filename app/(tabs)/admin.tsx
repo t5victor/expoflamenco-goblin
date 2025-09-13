@@ -277,7 +277,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadSiteData();
-  }, [selectedSite, timeFilter]);
+  }, [selectedSite, timeFilter]); 
 
   const loadSiteData = async () => {
     try {
