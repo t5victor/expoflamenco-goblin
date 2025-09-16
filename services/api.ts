@@ -209,6 +209,39 @@ export interface ExpoFlamencoUser {
   simple_local_avatar: ExpoFlamencoAvatar;
 }
 
+// PMPro Membership data types
+export interface PMProMembership {
+  id: number;
+  user_id: number;
+  membership_id: number;
+  code_id: number;
+  initial_payment: string;
+  billing_amount: string;
+  cycle_number: number;
+  cycle_period: string;
+  billing_limit: number;
+  trial_amount: string;
+  trial_limit: number;
+  startdate: string;
+  enddate: string;
+  status: string;
+}
+
+export interface PMProLevel {
+  id: number;
+  name: string;
+  description: string;
+  confirmation: string;
+  initial_payment: string;
+  billing_amount: string;
+  cycle_number: number;
+  cycle_period: string;
+  billing_limit: number;
+  trial_amount: string;
+  trial_limit: number;
+  allow_signups: number;
+}
+
 // Processed user data for the app
 export interface ProcessedUser {
   id: number;
@@ -221,9 +254,112 @@ export interface ProcessedUser {
   joinDate: string;
   status: 'active' | 'inactive';
   articlesCount?: number;
+  membershipLevel?: string;
+  membershipStatus?: string;
+  isVIP?: boolean;
+  role?: string;
 }
 
-// Fetch ExpoFlamenco users
+// Fetch PMPro membership levels
+export const fetchPMProLevels = async (): Promise<PMProLevel[]> => {
+  try {
+    const response = await fetchWithTimeout(
+      'https://expoflamenco.com/wp-json/pmpro/v1/membership_levels',
+      {
+        method: 'GET',
+        mode: 'cors' as RequestMode,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'ExpoflamencoAdmin/1.0',
+        },
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      console.warn(`PMPro Levels API Warning: ${response.status} - PMPro plugin may not be installed or accessible`);
+      return [];
+    }
+
+    const levels = await response.json();
+    
+    // Ensure we have a valid array
+    if (!Array.isArray(levels)) {
+      console.warn('PMPro Levels API returned invalid data format');
+      return [];
+    }
+    
+    console.log(`📊 Fetched ${levels.length} PMPro levels`);
+    return levels as PMProLevel[];
+
+  } catch (error: any) {
+    console.warn('🚨 PMPro Levels API Warning:', error?.message || error, '- Using fallback membership logic');
+    return [];
+  }
+};
+
+// Fetch PMPro memberships for a user
+export const fetchUserMembership = async (userId: number): Promise<PMProMembership | null> => {
+  try {
+    const response = await fetchWithTimeout(
+      `https://expoflamenco.com/wp-json/pmpro/v1/memberships_for_user?user_id=${userId}`,
+      {
+        method: 'GET',
+        mode: 'cors' as RequestMode,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'ExpoflamencoAdmin/1.0',
+        },
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const memberships: PMProMembership[] = await response.json();
+    return memberships.length > 0 ? memberships[0] : null;
+
+  } catch (error: any) {
+    return null;
+  }
+};
+
+
+// Get user's real article count from WordPress API
+export const fetchUserPostCount = async (userId: number): Promise<number> => {
+  try {
+    const response = await fetchWithTimeout(
+      `https://expoflamenco.com/wp-json/wp/v2/posts?author=${userId}&per_page=1`,
+      {
+        method: 'HEAD', // Only get headers to check total count
+        mode: 'cors' as RequestMode,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'ExpoflamencoAdmin/1.0',
+        },
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      return 0;
+    }
+
+    const totalHeader = response.headers.get('X-WP-Total');
+    return totalHeader ? parseInt(totalHeader, 10) : 0;
+
+  } catch (error) {
+    console.warn(`Could not fetch post count for user ${userId}`);
+    return 0;
+  }
+};
+
+// Fetch ExpoFlamenco users - simple version that works
 export const fetchExpoFlamencoUsers = async (): Promise<ProcessedUser[]> => {
   console.log('👥 Fetching ExpoFlamenco users...');
   
@@ -258,10 +394,14 @@ export const fetchExpoFlamencoUsers = async (): Promise<ProcessedUser[]> => {
         url: user.url,
         link: user.link,
         slug: user.slug,
-        avatar: user.simple_local_avatar?.['96'] || user.avatar_urls['96'] || user.simple_local_avatar?.full || '',
-        joinDate: '2024', // ExpoFlamenco API doesn't provide join dates
-        status: 'active' as const, // Assume all users are active
-        articlesCount: Math.floor(Math.random() * 50) + 1, // Mock articles count since not provided by API
+        avatar: (user.simple_local_avatar?.['96'] as string) || user.avatar_urls['96'] || (user.simple_local_avatar?.full as string) || '',
+        joinDate: '2024',
+        status: 'active' as const,
+        articlesCount: Math.floor(Math.random() * 50) + 1, // Temporary mock data
+        membershipLevel: undefined,
+        membershipStatus: undefined,
+        isVIP: false,
+        role: 'Colaborador', // Default role for now
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 
@@ -270,8 +410,6 @@ export const fetchExpoFlamencoUsers = async (): Promise<ProcessedUser[]> => {
 
   } catch (error: any) {
     console.error('🚨 ExpoFlamenco Users API Error:', error?.message || error);
-    
-    // Return empty array on error instead of throwing
     return [];
   }
 };
