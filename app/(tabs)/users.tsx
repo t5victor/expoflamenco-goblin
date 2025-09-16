@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Sidebar } from '@/components/Sidebar';
 import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { fetchExpoFlamencoUsers, type ProcessedUser } from '@/services/api';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -17,6 +18,7 @@ export default function UsersScreen() {
   const [users, setUsers] = useState<ProcessedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -34,11 +36,32 @@ export default function UsersScreen() {
     loadUsers();
   }, []);
 
-  // Filter users based on search query
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter users based on search query and selected filter
+  const filteredUsers = users.filter(user => {
+    // Search filter
+    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.description.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    // Role filter based on real WordPress roles
+    switch (selectedFilter) {
+      case 'all':
+        return true;
+      case 'administrators':
+        return user.role === 'Administrador';
+      case 'editors':
+        return user.role === 'Editor';
+      case 'authors':
+        return user.role === 'Autor';
+      case 'contributors':
+        return user.role === 'Colaborador';
+      case 'writers':
+        return user.role === 'Escritor';
+      default:
+        return true;
+    }
+  });
 
   const userStats = {
     totalUsers: users.length,
@@ -50,10 +73,12 @@ export default function UsersScreen() {
   };
 
   const filters = [
-    { id: 'all', label: 'Todos', count: userStats.totalUsers },
-    { id: 'active', label: 'Activos', count: userStats.activeUsers },
-    { id: 'writers', label: 'Escritores', count: users.filter(u => u.articlesCount && u.articlesCount > 0).length },
-    { id: 'contributors', label: 'Colaboradores', count: users.filter(u => u.articlesCount && u.articlesCount > 10).length },
+    { id: 'all', label: 'Todo el Equipo', count: userStats.totalUsers, icon: 'users' },
+    { id: 'administrators', label: 'Administradores', count: users.filter(u => u.role === 'Administrador').length, icon: 'shield' },
+    { id: 'editors', label: 'Editores', count: users.filter(u => u.role === 'Editor').length, icon: 'edit-3' },
+    { id: 'authors', label: 'Autores', count: users.filter(u => u.role === 'Autor').length, icon: 'feather' },
+    { id: 'contributors', label: 'Colaboradores', count: users.filter(u => u.role === 'Colaborador').length, icon: 'users' },
+    { id: 'writers', label: 'Escritores', count: users.filter(u => u.role === 'Escritor').length, icon: 'pen-tool' },
   ];
 
   const getStatusColor = (status: string) => {
@@ -65,18 +90,24 @@ export default function UsersScreen() {
     }
   };
 
-  const getRoleColor = (articlesCount: number = 0) => {
-    if (articlesCount > 20) return '#8B5CF6'; // Expert
-    if (articlesCount > 10) return '#3B82F6'; // Contributor
-    if (articlesCount > 0) return '#10B981'; // Writer
-    return '#6B7280'; // Reader
+  const getRoleColor = (role: string = 'Lector') => {
+    switch (role) {
+      case 'Administrador': return '#DC2626'; // Red
+      case 'Editor': return '#8B5CF6'; // Purple
+      case 'Autor': return '#EF4444'; // Red-Orange
+      case 'Colaborador': return '#3B82F6'; // Blue
+      case 'Escritor': return '#10B981'; // Green
+      default: return '#6B7280'; // Gray
+    }
   };
 
-  const getUserRole = (articlesCount: number = 0) => {
-    if (articlesCount > 20) return 'Experto';
-    if (articlesCount > 10) return 'Colaborador';
-    if (articlesCount > 0) return 'Escritor';
-    return 'Lector';
+  const getMembershipColor = (membershipLevel: string = 'Free') => {
+    switch (membershipLevel) {
+      case 'VIP': return '#8B5CF6'; // Purple
+      case 'Premium': return '#3B82F6'; // Blue
+      case 'Free': return '#6B7280'; // Gray
+      default: return '#6B7280'; // Gray
+    }
   };
 
   if (loading) {
@@ -167,102 +198,95 @@ export default function UsersScreen() {
                     styles.statLabel,
                     { color: isDark ? '#9CA3AF' : '#6B7280' }
                   ]}>
-                    Total Usuarios
-                  </Text>
-                </View>
-
-                <View style={[
-                  styles.statCard,
-                  isMobile && styles.statCardMobile,
-                  { 
-                    backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-                    borderColor: isDark ? '#374151' : '#E5E7EB'
-                  }
-                ]}>
-                  <View style={styles.statHeader}>
-                    <Feather name="activity" size={20} color="#10B981" />
-                    <Text style={[
-                      styles.statValue,
-                      { color: isDark ? '#FFFFFF' : '#111827' }
-                    ]}>
-                      {userStats.activeUsers.toLocaleString()}
-                    </Text>
-                  </View>
-                  <Text style={[
-                    styles.statLabel,
-                    { color: isDark ? '#9CA3AF' : '#6B7280' }
-                  ]}>
-                    Usuarios Activos
-                  </Text>
-                </View>
-
-                <View style={[
-                  styles.statCard,
-                  isMobile && styles.statCardMobile,
-                  { 
-                    backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-                    borderColor: isDark ? '#374151' : '#E5E7EB'
-                  }
-                ]}>
-                  <View style={styles.statHeader}>
-                    <Feather name="edit" size={20} color="#8B5CF6" />
-                    <Text style={[
-                      styles.statValue,
-                      { color: isDark ? '#FFFFFF' : '#111827' }
-                    ]}>
-                      {users.filter(u => u.articlesCount && u.articlesCount > 0).length}
-                    </Text>
-                  </View>
-                  <Text style={[
-                    styles.statLabel,
-                    { color: isDark ? '#9CA3AF' : '#6B7280' }
-                  ]}>
-                    Escritores
+                    Equipo Total
                   </Text>
                 </View>
               </View>
 
-              {/* Filters */}
-              <View style={[styles.filtersRow, isMobile && styles.filtersRowMobile]}>
-                {filters.map((filter) => (
-                  <TouchableOpacity
-                    key={filter.id}
-                    style={[
-                      styles.filterButton,
-                      isMobile && styles.filterButtonMobile,
-                      { 
-                        backgroundColor: selectedFilter === filter.id 
-                          ? '#3B82F6' 
-                          : (isDark ? '#1F1F1F' : '#FFFFFF'),
-                        borderColor: selectedFilter === filter.id 
-                          ? '#3B82F6' 
-                          : (isDark ? '#374151' : '#E5E7EB')
-                      }
-                    ]}
-                    onPress={() => setSelectedFilter(filter.id)}
-                  >
-                    <Text style={[
-                      styles.filterLabel,
-                      { 
-                        color: selectedFilter === filter.id 
-                          ? '#FFFFFF'
-                          : (isDark ? '#FFFFFF' : '#111827')
-                      }
-                    ]}>
-                      {filter.label}
-                    </Text>
-                    <Text style={[
-                      styles.filterCount,
-                      { 
-                        color: selectedFilter === filter.id 
-                          ? 'rgba(255,255,255,0.8)'
-                          : (isDark ? '#9CA3AF' : '#6B7280')
-                      }
-                    ]}>
-                      {filter.count.toLocaleString()}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              {/* Role Filter Dropdown */}
+              <View style={[styles.filtersContainer, isMobile && styles.filtersContainerMobile]}>
+                <Text style={[
+                  styles.filtersTitle,
+                  { color: isDark ? '#FFFFFF' : '#111827' }
+                ]}>
+                  Filtrar por Rol:
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.dropdown,
+                    { 
+                      backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+                      borderColor: isDark ? '#374151' : '#E5E7EB'
+                    }
+                  ]}
+                  onPress={() => setShowDropdown(!showDropdown)}
+                >
+                  <Text style={[
+                    styles.dropdownText,
+                    { color: isDark ? '#FFFFFF' : '#111827' }
+                  ]}>
+                    {filters.find(f => f.id === selectedFilter)?.label || 'Seleccionar rol'}
+                  </Text>
+                  <Feather 
+                    name={showDropdown ? 'chevron-up' : 'chevron-down'} 
+                    size={16} 
+                    color={isDark ? '#9CA3AF' : '#6B7280'} 
+                  />
+                </TouchableOpacity>
+                
+                {showDropdown && (
+                  <View style={[
+                    styles.dropdownMenu,
+                    { 
+                      backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+                      borderColor: isDark ? '#374151' : '#E5E7EB'
+                    }
+                  ]}>
+                    {filters.map((filter) => (
+                      <TouchableOpacity
+                        key={filter.id}
+                        style={[
+                          styles.dropdownItem,
+                          selectedFilter === filter.id && styles.dropdownItemSelected,
+                          selectedFilter === filter.id && { backgroundColor: '#3B82F6' + '20' }
+                        ]}
+                        onPress={() => {
+                          setSelectedFilter(filter.id);
+                          setShowDropdown(false);
+                        }}
+                      >
+                        <Feather 
+                          name={filter.icon as any} 
+                          size={14} 
+                          color={selectedFilter === filter.id 
+                            ? '#3B82F6'
+                            : (isDark ? '#9CA3AF' : '#6B7280')
+                          } 
+                        />
+                        <Text style={[
+                          styles.dropdownItemText,
+                          { 
+                            color: selectedFilter === filter.id 
+                              ? '#3B82F6'
+                              : (isDark ? '#FFFFFF' : '#111827')
+                          }
+                        ]}>
+                          {filter.label}
+                        </Text>
+                        <Text style={[
+                          styles.dropdownItemCount,
+                          { 
+                            color: selectedFilter === filter.id 
+                              ? '#3B82F6'
+                              : (isDark ? '#9CA3AF' : '#6B7280')
+                          }
+                        ]}>
+                          ({filter.count})
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
 
               {/* Users Table */}
@@ -311,66 +335,97 @@ export default function UsersScreen() {
                   ) : (
                     filteredUsers.map((user) => (
                       <View key={user.id} style={[
-                        styles.userRow,
-                        isMobile && styles.userRowMobile,
-                        { borderBottomColor: isDark ? '#374151' : '#E5E7EB' }
+                        styles.userCard,
+                        isMobile && styles.userCardMobile,
+                        { 
+                          backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+                          borderColor: isDark ? '#374151' : '#E5E7EB'
+                        }
                       ]}>
-                        <View style={[styles.userInfo, isMobile && styles.userInfoMobile]}>
-                          {user.avatar ? (
-                            <Image 
-                              source={{ uri: user.avatar }} 
-                              style={styles.userAvatar}
-                              onError={() => console.log('Avatar failed to load')}
-                            />
-                          ) : (
-                            <View style={[styles.userAvatar, styles.userAvatarFallback]}>
-                              <Text style={styles.avatarText}>
-                                {user.name.charAt(0).toUpperCase()}
+                        <View style={styles.userCardContent}>
+                          <View style={styles.userAvatarContainer}>
+                            {user.avatar ? (
+                              <Image 
+                                source={{ uri: user.avatar }} 
+                                style={styles.userAvatar}
+                                onError={() => console.log('Avatar failed to load')}
+                              />
+                            ) : (
+                              <View style={[styles.userAvatar, styles.userAvatarFallback]}>
+                                <Text style={styles.avatarText}>
+                                  {user.name.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          
+                          <View style={styles.userInfo}>
+                            <TouchableOpacity 
+                              onPress={() => {
+                                if (user.slug) {
+                                  router.push(`/user/${user.slug}`);
+                                }
+                              }}
+                            >
+                              <Text style={[
+                                styles.userName,
+                                { color: isDark ? '#FFFFFF' : '#111827' }
+                              ]}>
+                                {user.name}
                               </Text>
-                            </View>
-                          )}
-                          <View style={styles.userDetails}>
-                            <Text style={[
-                              styles.userName,
-                              { color: isDark ? '#FFFFFF' : '#111827' }
-                            ]}>
-                              {user.name}
-                            </Text>
+                            </TouchableOpacity>
+                            
                             <Text style={[
                               styles.userDescription,
                               { color: isDark ? '#9CA3AF' : '#6B7280' }
-                            ]} numberOfLines={isMobile ? 2 : 1}>
+                            ]} numberOfLines={isMobile ? 3 : 2}>
                               {user.description}
                             </Text>
+                            
+                            <View style={styles.userBadges}>
+                              <View style={[
+                                styles.roleBadge,
+                                { backgroundColor: getRoleColor(user.role) + '20' }
+                              ]}>
+                                <Text style={[
+                                  styles.roleText,
+                                  { color: getRoleColor(user.role) }
+                                ]}>
+                                  {user.role || 'Colaborador'}
+                                </Text>
+                              </View>
+                              
+                              {user.isVIP && (
+                                <View style={[
+                                  styles.membershipBadge,
+                                  { backgroundColor: getMembershipColor(user.membershipLevel) + '20' }
+                                ]}>
+                                  <Text style={[
+                                    styles.membershipText,
+                                    { color: getMembershipColor(user.membershipLevel) }
+                                  ]}>
+                                    {user.membershipLevel}
+                                  </Text>
+                                </View>
+                              )}
+                              
+                              <View style={[
+                                styles.statusBadge,
+                                { backgroundColor: getStatusColor(user.status) + '20' }
+                              ]}>
+                                <Text style={[
+                                  styles.statusText,
+                                  { color: getStatusColor(user.status) }
+                                ]}>
+                                  {user.status}
+                                </Text>
+                              </View>
+                            </View>
                           </View>
                         </View>
 
                         {!isMobile && (
-                          <View style={styles.userMeta}>
-                            <View style={[
-                              styles.statusBadge,
-                              { backgroundColor: getStatusColor(user.status) + '20' }
-                            ]}>
-                              <Text style={[
-                                styles.statusText,
-                                { color: getStatusColor(user.status) }
-                              ]}>
-                                {user.status}
-                              </Text>
-                            </View>
-
-                            <View style={[
-                              styles.roleBadge,
-                              { backgroundColor: getRoleColor(user.articlesCount) + '20' }
-                            ]}>
-                              <Text style={[
-                                styles.roleText,
-                                { color: getRoleColor(user.articlesCount) }
-                              ]}>
-                                {getUserRole(user.articlesCount)}
-                              </Text>
-                            </View>
-
+                          <View style={styles.userStats}>
                             <Text style={[
                               styles.articlesCount,
                               { color: isDark ? '#9CA3AF' : '#6B7280' }
@@ -387,16 +442,6 @@ export default function UsersScreen() {
                           </View>
                         )}
 
-                        <TouchableOpacity 
-                          style={styles.moreButton}
-                          onPress={() => {
-                            if (user.link && isWeb) {
-                              window.open(user.link, '_blank');
-                            }
-                          }}
-                        >
-                          <Feather name="external-link" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                        </TouchableOpacity>
                       </View>
                     ))
                   )}
@@ -514,36 +559,66 @@ const styles = StyleSheet.create({
     fontSize: isMobile ? 13 : 14,
     fontWeight: '500',
   },
-  filtersRow: {
-    flexDirection: isMobile ? 'column' : 'row',
-    gap: isMobile ? 8 : 12,
+  filtersContainer: {
     marginBottom: 24,
+    position: 'relative',
   },
-  filtersRowMobile: {
-    flexDirection: 'column',
-    gap: 8,
+  filtersContainerMobile: {
+    marginBottom: 20,
   },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 6,
-    borderWidth: 1,
-    minWidth: isMobile ? undefined : 100,
+  filtersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  dropdown: {
+    flexDirection: 'row',
     alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 44,
   },
-  filterButtonMobile: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  filterLabel: {
+  dropdownText: {
     fontSize: 14,
     fontWeight: '500',
-    marginBottom: isMobile ? 0 : 2,
   },
-  filterCount: {
+  dropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+    maxHeight: 200,
+    zIndex: 1000,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  dropdownItemSelected: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  dropdownItemCount: {
     fontSize: 12,
+    fontWeight: '500',
   },
   usersTable: {
     borderRadius: 8,
@@ -587,32 +662,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  userRow: {
-    flexDirection: isMobile ? 'column' : 'row',
-    alignItems: isMobile ? 'flex-start' : 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    gap: isMobile ? 8 : 0,
+  userCard: {
+    marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  userRowMobile: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 8,
+  userCardMobile: {
+    marginBottom: 12,
+  },
+  userCardContent: {
+    flexDirection: isMobile ? 'column' : 'row',
+    padding: 16,
+    alignItems: isMobile ? 'center' : 'flex-start',
+    gap: 16,
+  },
+  userAvatarContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: isMobile ? undefined : 2,
-    width: isMobile ? '100%' : undefined,
-  },
-  userInfoMobile: {
-    width: '100%',
+    flex: 1,
+    alignItems: isMobile ? 'center' : 'flex-start',
   },
   userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   userAvatarFallback: {
     backgroundColor: '#3B82F6',
@@ -628,23 +704,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   userName: {
-    fontSize: isMobile ? 15 : 14,
-    fontWeight: '500',
-    marginBottom: 2,
+    fontSize: isMobile ? 18 : 16,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: isMobile ? 'center' : 'left',
   },
   userDescription: {
-    fontSize: isMobile ? 13 : 12,
-    lineHeight: isMobile ? 18 : 16,
+    fontSize: isMobile ? 14 : 13,
+    lineHeight: isMobile ? 20 : 18,
+    textAlign: isMobile ? 'center' : 'left',
+    marginBottom: 12,
   },
-  userEmail: {
-    fontSize: 12,
-  },
-  userMeta: {
-    flex: 3,
-    flexDirection: isMobile ? 'row' : 'row',
-    alignItems: 'center',
-    gap: 12,
+  userBadges: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: isMobile ? 'center' : 'flex-start',
     flexWrap: 'wrap',
+  },
+  userStats: {
+    alignItems: 'flex-end',
+    gap: 4,
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -665,6 +744,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  membershipBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  membershipText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
   articlesCount: {
     fontSize: 12,
     minWidth: 80,
@@ -676,9 +764,5 @@ const styles = StyleSheet.create({
   lastSeen: {
     fontSize: 12,
     minWidth: 80,
-  },
-  moreButton: {
-    padding: 8,
-    alignSelf: isMobile ? 'flex-end' : 'center',
   },
 });
