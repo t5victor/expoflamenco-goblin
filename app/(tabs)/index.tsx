@@ -234,7 +234,7 @@ export default function ExpoFlamencoCommandCenter() {
         ]}>
           <View style={styles.logoContainer}>
             <Image
-              source={require('@/assets/images/Gob.png')}
+              source={require('@/assets/images/EF512.png')}
               style={{width: 250, height: 250}}
               resizeMode="contain"
             />
@@ -251,7 +251,7 @@ export default function ExpoFlamencoCommandCenter() {
               styles.heroSubtitle,
               { color: isDark ? '#CCCCCC' : '#666666' }
             ]}>
-              It's time to get some lazy lads under control.
+              Seguimiento de estadísticas y datos.
             </Text>
           </View>
         </View>
