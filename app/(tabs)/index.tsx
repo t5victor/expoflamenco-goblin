@@ -305,35 +305,8 @@ export default function ExpoFlamencoCommandCenter() {
           </View>
         </View>
 
-        {/* Status Card */}
-        <View style={[
-          styles.statusSection,
-          { paddingHorizontal: isWeb && !isMobile ? 40 : 20 }
-        ]}>
-          <View style={[
-            styles.statusCard,
-            {
-              backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-              borderColor: isDark ? '#333' : '#E0E0E0',
-            }
-          ]}>
-            <View style={styles.statusHeader}>
-              <View style={[styles.statusIndicator, { backgroundColor: '#4CAF50' }]} />
-              <Text style={[
-                styles.statusTitle,
-                { color: isDark ? '#FFFFFF' : '#000000' }
-              ]}>
-                System Status
-              </Text>
-            </View>
-            <Text style={[
-              styles.statusDescription,
-              { color: isDark ? '#CCCCCC' : '#666666' }
-            ]}>
-              All systems operational. Ready to manage your flamenco platform.
-            </Text>
-          </View>
-        </View>
+        {/* Status Card - Removed (16/09/2025) */}
+        
       </ScrollView>
     </SafeAreaView>
   );
