@@ -1,7 +1,9 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
-import WelcomeLogo from "../assets/images/Welcome.svg";
+import WelcomeLogo from "../assets/images/Welcome-SecTry.svg";
+import { Feather } from "@expo/vector-icons";
+
 
 const { width } = Dimensions.get("window");
 
@@ -14,17 +16,19 @@ export default function WelcomeScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />  
       
-      <Text style={styles.title}>Conoce las estadísticas de tu trabajo</Text>
-      <WelcomeLogo width={width * 0.7} height={width * 0.7} style={styles.logo} />
       
-      <Text style={styles.subtitle}>Tu centro de control para estadísticas y datos</Text>
+      <WelcomeLogo width={width * 0.8} height={width * 0.8} style={styles.logo} />
+      <Text style={styles.title}>Conoce las estadísticas de tu trabajo</Text>
+      
+      <Text style={styles.subtitle}>Accede a una visión completa de tus estadísticas para comprender mejor tu desempeño y optimizar tu trabajo en Expoflamenco.</Text>
 
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => router.replace("/(tabs)")}
-      >
-        <Text style={styles.buttonText}>Iniciar sesión</Text>
-      </TouchableOpacity>
+        <TouchableOpacity 
+    style={styles.button} 
+    onPress={() => router.replace("/(tabs)")}
+    >
+    <Feather name="arrow-right" size={25} color="#fff"/>
+    
+    </TouchableOpacity>
     </View>
   );
 }
@@ -35,30 +39,31 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: "center",
         justifyContent: "flex-start",
-        backgroundColor: "#fff",
+        backgroundColor: "#fff3e8",
         padding: 20,
-        paddingTop: 180, // desplaza hacia abajo desde arriba
+        paddingTop: 130, // desplaza hacia abajo desde arriba
       },
       
   logo: {
     marginBottom: 30,
   },
   title: {
-    fontSize: 24,
+    fontSize: 36,
     fontWeight: "bold",
     marginBottom: 30,
     textAlign: "center",
+    color: "#000000",
   },
   subtitle: {
     fontSize: 16,
-    color: "#666",
+    color: "#000000",
     marginBottom: 40,
     textAlign: "center",
   },
   button: {
     backgroundColor: "#DA2B1F",
     paddingVertical: 14,
-    paddingHorizontal: 40,
+    paddingHorizontal: 20,
     borderRadius: 8,
   },
   buttonText: {
