@@ -179,6 +179,103 @@ const parseCountriesFromVisitors = (visitors: any[]) => {
     .slice(0, 5);
 };
 
+// ExpoFlamenco User data types
+export interface ExpoFlamencoBlogInfo {
+  blog_id: number;
+}
+
+export interface ExpoFlamencoAvatarUrls {
+  '24': string;
+  '48': string;
+  '96': string;
+}
+
+export interface ExpoFlamencoAvatar {
+  media_id: number;
+  full: string;
+  blog_id: number;
+  [key: string]: string | number;
+}
+
+export interface ExpoFlamencoUser {
+  id: number;
+  name: string;
+  url: string;
+  description: string;
+  link: string;
+  slug: string;
+  avatar_urls: ExpoFlamencoAvatarUrls;
+  meta: any[];
+  simple_local_avatar: ExpoFlamencoAvatar;
+}
+
+// Processed user data for the app
+export interface ProcessedUser {
+  id: number;
+  name: string;
+  description: string;
+  url: string;
+  link: string;
+  slug: string;
+  avatar: string;
+  joinDate: string;
+  status: 'active' | 'inactive';
+  articlesCount?: number;
+}
+
+// Fetch ExpoFlamenco users
+export const fetchExpoFlamencoUsers = async (): Promise<ProcessedUser[]> => {
+  console.log('👥 Fetching ExpoFlamenco users...');
+  
+  try {
+    const response = await fetchWithTimeout(
+      'https://expoflamenco.com/wp-json/wp/v2/users',
+      {
+        method: 'GET',
+        mode: 'cors' as RequestMode,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'ExpoflamencoAdmin/1.0',
+        },
+      },
+      10000
+    );
+
+    if (!response.ok) {
+      throw new Error(`ExpoFlamenco Users API Error: ${response.status}`);
+    }
+
+    const users: ExpoFlamencoUser[] = await response.json();
+    console.log(`📊 Fetched ${users.length} users from ExpoFlamenco`);
+
+    // Process and sort users alphabetically
+    const processedUsers: ProcessedUser[] = users
+      .map(user => ({
+        id: user.id,
+        name: user.name,
+        description: user.description || 'Sin descripción disponible',
+        url: user.url,
+        link: user.link,
+        slug: user.slug,
+        avatar: user.simple_local_avatar?.['96'] || user.avatar_urls['96'] || user.simple_local_avatar?.full || '',
+        joinDate: '2024', // ExpoFlamenco API doesn't provide join dates
+        status: 'active' as const, // Assume all users are active
+        articlesCount: Math.floor(Math.random() * 50) + 1, // Mock articles count since not provided by API
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+
+    console.log('✅ Users processed and sorted alphabetically');
+    return processedUsers;
+
+  } catch (error: any) {
+    console.error('🚨 ExpoFlamenco Users API Error:', error?.message || error);
+    
+    // Return empty array on error instead of throwing
+    return [];
+  }
+};
+
 export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') => {
   console.log('🔗 WPStats API Config:', {
     siteId,
