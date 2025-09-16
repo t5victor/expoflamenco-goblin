@@ -548,11 +548,11 @@ const styles = StyleSheet.create({
   statHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     marginBottom: 8,
   },
   statValue: {
-    fontSize: isMobile ? 20 : 24,
+    fontSize: isMobile ? 32 : 36,
     fontWeight: '700',
   },
   statLabel: {
@@ -672,9 +672,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   userCardContent: {
-    flexDirection: isMobile ? 'column' : 'row',
+    flexDirection: 'row',
     padding: 16,
-    alignItems: isMobile ? 'center' : 'flex-start',
+    alignItems: 'center',
     gap: 16,
   },
   userAvatarContainer: {
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flex: 1,
-    alignItems: isMobile ? 'center' : 'flex-start',
+    alignItems: 'flex-start',
   },
   userAvatar: {
     width: 60,
@@ -704,21 +704,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   userName: {
-    fontSize: isMobile ? 18 : 16,
+    fontSize: 16,
     fontWeight: '700',
     marginBottom: 8,
-    textAlign: isMobile ? 'center' : 'left',
+    textAlign: 'left',
   },
   userDescription: {
-    fontSize: isMobile ? 14 : 13,
-    lineHeight: isMobile ? 20 : 18,
-    textAlign: isMobile ? 'center' : 'left',
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'left',
     marginBottom: 12,
   },
   userBadges: {
     flexDirection: 'row',
     gap: 8,
-    justifyContent: isMobile ? 'center' : 'flex-start',
+    justifyContent: 'flex-start',
     flexWrap: 'wrap',
   },
   userStats: {
