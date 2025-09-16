@@ -234,8 +234,8 @@ export default function ExpoFlamencoCommandCenter() {
         ]}>
           <View style={styles.logoContainer}>
             <Image
-              source={require('@/assets/images/EF512.png')}
-              style={styles.heroLogo}
+              source={require('@/assets/images/Gob.png')}
+              style={{width: 250, height: 250}}
               resizeMode="contain"
             />
           </View>
@@ -245,13 +245,13 @@ export default function ExpoFlamencoCommandCenter() {
               styles.heroTitle,
               { color: isDark ? '#FFFFFF' : '#000000' }
             ]}>
-              ExpoFlamenco Command Center
+              Command Center
             </Text>
             <Text style={[
               styles.heroSubtitle,
               { color: isDark ? '#CCCCCC' : '#666666' }
             ]}>
-              Professional analytics and management platform for your flamenco business
+              It's time to get some lazy lads under control.
             </Text>
           </View>
         </View>

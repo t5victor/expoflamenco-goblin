@@ -29,7 +29,12 @@
       "template": "./web/index.html"
     },
     "plugins": [
+      [
       "expo-router",
+      {
+        "origin": "https://expoflamenco.com"
+      }
+      ],
       [
         "expo-splash-screen",
         {
@@ -50,9 +55,7 @@
       }
     },
     "owner": "expovictor6",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/040d843d-7959-48ae-8ec1-977b5756d9dc"
     }
