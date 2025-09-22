@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Activ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Sidebar } from '@/components/Sidebar';
 import { Feather } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -13,13 +14,12 @@ const isWeb = Platform.OS === 'web';
 const isMobile = screenWidth < 768;
 
 interface ArticleWithAnalytics {
-  post: {
-    id: number;
-    title: { rendered: string };
-    date: string;
-    modified: string;
-    link: string;
-  };
+  id: number;
+  title: { rendered: string };
+  date: string;
+  modified: string;
+  slug: string;
+  link: string;
   views: number;
   engagement: number;
 }
@@ -27,6 +27,7 @@ interface ArticleWithAnalytics {
 export default function ArticlesScreen() {
   const colorScheme = useColorScheme();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const isDark = colorScheme === 'dark';
   const [articles, setArticles] = useState<ArticleWithAnalytics[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +56,7 @@ export default function ArticlesScreen() {
           case 'views':
             return b.views - a.views;
           case 'date':
-            return new Date(b.post.date).getTime() - new Date(a.post.date).getTime();
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
           case 'engagement':
             return b.engagement - a.engagement;
           default:
@@ -89,7 +90,7 @@ export default function ArticlesScreen() {
             styles.loadingText,
             { color: isDark ? '#FFFFFF' : '#111827' }
           ]}>
-            Cargando artículos...
+            {t('loading')}
           </Text>
         </View>
       </SafeAreaView>
@@ -115,7 +116,7 @@ export default function ArticlesScreen() {
                     styles.refreshText,
                     { color: isDark ? '#FFFFFF' : '#374151' }
                   ]}>
-                    {refreshing ? 'Actualizando...' : 'Actualizar'}
+                    {refreshing ? t('articles.refreshing') : t('articles.refresh')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -129,13 +130,13 @@ export default function ArticlesScreen() {
                   styles.headerTitle,
                   { color: isDark ? '#FFFFFF' : '#111827' }
                 ]}>
-                  Mis Artículos
+                  {t('articles.title')}
                 </Text>
                 <Text style={[
                   styles.headerSubtitle,
                   { color: isDark ? '#9CA3AF' : '#6B7280' }
                 ]}>
-                  Rendimiento y estadísticas de tus publicaciones
+                  {t('articles.subtitle')}
                 </Text>
               </View>
 
@@ -147,9 +148,9 @@ export default function ArticlesScreen() {
                   { backgroundColor: isDark ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.8)' }
                 ]}>
                   {[
-                    { id: 'views', label: 'Más Vistos', icon: 'eye' },
-                    { id: 'date', label: 'Más Recientes', icon: 'calendar' },
-                    { id: 'engagement', label: 'Mejor Engagement', icon: 'arrow.up' },
+                    { id: 'views', label: t('articles.sortByViews'), icon: 'eye' },
+                    { id: 'date', label: t('articles.sortByDate'), icon: 'calendar' },
+                    { id: 'engagement', label: t('articles.sortByEngagement'), icon: 'arrow.up' },
                   ].map((sort, index) => (
                     <TouchableOpacity
                       key={sort.id}
@@ -199,19 +200,19 @@ export default function ArticlesScreen() {
                     styles.emptyTitle,
                     { color: isDark ? '#FFFFFF' : '#111827' }
                   ]}>
-                    No hay artículos
+                    {t('articles.noArticles')}
                   </Text>
                   <Text style={[
                     styles.emptySubtitle,
                     { color: isDark ? '#9CA3AF' : '#6B7280' }
                   ]}>
-                    Aún no has publicado ningún artículo en la revista.
+                    {t('articles.noArticlesDesc')}
                   </Text>
                 </View>
               ) : (
                 articles.map((article, index) => (
                   <View
-                    key={article.post.id}
+                    key={article.id}
                     style={[
                       styles.articleCard,
                       { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }
@@ -223,7 +224,7 @@ export default function ArticlesScreen() {
                           styles.articleDate,
                           { color: isDark ? '#9CA3AF' : '#6B7280' }
                         ]}>
-                          {new Date(article.post.date).toLocaleDateString('es-ES')}
+                          {new Date(article.date).toLocaleDateString('es-ES')}
                         </Text>
                         <View style={[
                           styles.rankBadge,
@@ -243,7 +244,7 @@ export default function ArticlesScreen() {
                       styles.articleTitle,
                       { color: isDark ? '#FFFFFF' : '#111827' }
                     ]} numberOfLines={2}>
-                      {article.post.title.rendered}
+                      {article.title.rendered}
                     </Text>
 
                     <View style={styles.articleStats}>
@@ -259,7 +260,7 @@ export default function ArticlesScreen() {
                           styles.statLabel,
                           { color: isDark ? '#9CA3AF' : '#6B7280' }
                         ]}>
-                          vistas
+                          {t('articles.views')}
                         </Text>
                       </View>
 
@@ -275,7 +276,7 @@ export default function ArticlesScreen() {
                           styles.statLabel,
                           { color: isDark ? '#9CA3AF' : '#6B7280' }
                         ]}>
-                          engagement
+                          {t('articles.engagement')}
                         </Text>
                       </View>
                     </View>
@@ -288,7 +289,7 @@ export default function ArticlesScreen() {
                       onPress={() => {
                         // Open article link
                         if (Platform.OS === 'web') {
-                          window.open(article.post.link, '_blank');
+                          window.open(article.link, '_blank');
                         }
                       }}
                     >
@@ -296,7 +297,7 @@ export default function ArticlesScreen() {
                         styles.linkText,
                         { color: '#DA2B1F' }
                       ]}>
-                        Ver artículo
+                        {t('articles.viewArticle')}
                       </Text>
                       <IconSymbol name="arrow.up.right.square" size={14} color="#DA2B1F" />
                     </TouchableOpacity>

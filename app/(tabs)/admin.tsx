@@ -6,8 +6,6 @@ import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageDropdown } from '@/components/LanguageDropdown';
-import { TrafficChart } from '@/components/TrafficChart';
-import { SubsChart } from '@/components/SubsChart';
 import { Feather } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { authorAnalyticsService, AuthorAnalytics } from '@/services/authorAnalytics';
@@ -55,12 +53,12 @@ const PostsCard: React.FC<PostsCardProps> = ({
     ]}>
       <View style={styles.cardHeader}>
         <View style={styles.cardTitleRow}>
-          <IconSymbol name="doc.text.fill" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+          <IconSymbol name="doc" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
           <Text style={[
             styles.cardTitle,
             { color: isDark ? '#D1D5DB' : '#374151' }
           ]}>
-            {`${timeFilter} Posts`}
+            {`${t(`timePeriods.${timeFilter}`)} ${t('dashboard.postsCount')}`}
           </Text>
         </View>
       </View>
@@ -76,7 +74,7 @@ const PostsCard: React.FC<PostsCardProps> = ({
         styles.cardSubtitle,
         { color: isDark ? '#9CA3AF' : '#6B7280' }
       ]}>
-        Total artículos publicados
+        {t('dashboard.postsTotalDesc')}
       </Text>
 
       {data.comparison?.posts && (
@@ -323,13 +321,13 @@ export default function AuthorDashboard() {
                   styles.headerTitle,
                   { color: isDark ? '#FFFFFF' : '#111827' }
                 ]}>
-                  {user?.name || 'Analytics Dashboard'}
+                  {user?.name || t('dashboard.title')}
                 </Text>
                 <Text style={[
                   styles.headerSubtitle,
                   { color: isDark ? '#9CA3AF' : '#6B7280' }
                 ]}>
-                  Tus métricas de rendimiento en Expoflamenco Revista
+                  {t('dashboard.subtitle')}
                 </Text>
               </View>
 
@@ -386,7 +384,7 @@ export default function AuthorDashboard() {
                         styles.actionButtonText,
                         { color: isDark ? '#FFFFFF' : '#374151' }
                       ]}>
-                        Salir
+                        {t('logout')}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -399,9 +397,9 @@ export default function AuthorDashboard() {
               {/* Key Metrics Row */}
               <View style={[styles.metricsRow, isMobile && styles.mobileMetricsRow]}>
                 <MetricCard
-                  title="Total Views"
+                  title={t('dashboard.totalViews')}
                   value={data.totalViews.toLocaleString()}
-                  subtitle={`Vistas totales (${timeFilter})`}
+                  subtitle={`${t('dashboard.viewsTotal')} (${t(`timePeriods.${timeFilter}`)})`}
                   trend={data.comparison?.views.trend || 'neutral'}
                   trendValue={data.comparison?.views.percentage || '0%'}
                   icon="eye"
@@ -416,20 +414,20 @@ export default function AuthorDashboard() {
                 />
 
                 <MetricCard
-                  title="Avg Views/Post"
+                  title={t('dashboard.avgViewsPerPost')}
                   value={data.avgViewsPerPost.toFixed(1)}
-                  subtitle="Promedio de vistas por artículo"
+                  subtitle={t('dashboard.avgViewsDesc')}
                   trend={data.comparison?.engagement.trend || 'neutral'}
                   trendValue={data.comparison?.engagement.percentage || '0%'}
-                  icon="arrow.up"
+                  icon="arrow.up.circle"
                   size="medium"
                   accentColor="#10B981"
                 />
 
                 <MetricCard
-                  title="Top Post Views"
+                  title={t('dashboard.topPostViews')}
                   value={data.topPosts.length > 0 ? data.topPosts[0].views.toLocaleString() : '0'}
-                  subtitle="Mejor artículo"
+                  subtitle={t('dashboard.topPostDesc')}
                   trend="up"
                   trendValue="N/A"
                   icon="star"
@@ -441,15 +439,6 @@ export default function AuthorDashboard() {
               {/* Chart and Secondary Metrics */}
               <View style={[styles.contentRow, isMobile && styles.mobileContentRow]}>
                 <View style={[styles.leftColumn, isMobile && styles.mobileLeftColumn]}>
-                  <TrafficChart
-                    weeklyData={data.topPosts.slice(0, 7).map((post, index) => ({
-                      day: post.post.title.rendered.substring(0, 10) + '...',
-                      visitors: post.views
-                    }))}
-                    timePeriod={timeFilter}
-                    siteId="revista"
-                  />
-
                   {/* Top Posts List */}
                   <View style={[
                     styles.chartCard,
@@ -497,21 +486,21 @@ export default function AuthorDashboard() {
                 <View style={[styles.rightColumn, isMobile && styles.mobileRightColumn]}>
                   <View style={styles.rightMetrics}>
                     <MetricCard
-                      title="Artículos Recientes"
+                      title={t('dashboard.articlesRecentTitle')}
                       value={data.recentPosts.length.toString()}
-                      subtitle="Publicados recientemente"
+                      subtitle={t('dashboard.articlesRecentSubtitle')}
                       trend="neutral"
                       trendValue="N/A"
                       icon="clock"
                       size="small"
                     />
                     <MetricCard
-                      title="Mejor Posición"
+                      title={t('dashboard.topPositionTitle')}
                       value={data.topPosts.length > 0 ? "1" : "N/A"}
-                      subtitle="Ranking de artículos"
+                      subtitle={t('dashboard.topPositionSubtitle')}
                       trend="up"
                       trendValue="Top"
-                      icon="award"
+                      icon="star.fill"
                       size="small"
                     />
                   </View>
@@ -527,7 +516,7 @@ export default function AuthorDashboard() {
                       styles.sideCardTitle,
                       { color: isDark ? '#FFFFFF' : '#111827' }
                     ]}>
-                      Artículos Recientes
+                      {t('dashboard.articlesRecent')}
                     </Text>
                     {data.recentPosts.slice(0, 5).map((post, index) => (
                       <View key={post.id} style={styles.postItem}>
@@ -560,7 +549,7 @@ export default function AuthorDashboard() {
                       styles.sideCardTitle,
                       { color: isDark ? '#FFFFFF' : '#111827' }
                     ]}>
-                      Estadísticas del Autor
+                      {t('dashboard.statsSummary')}
                     </Text>
                     <View style={styles.activityItem}>
                       <View style={[styles.activityDot, { backgroundColor: '#10B981' }]} />
@@ -568,7 +557,7 @@ export default function AuthorDashboard() {
                         styles.activityText,
                         { color: isDark ? '#D1D5DB' : '#374151' }
                       ]}>
-                        {data.totalPosts} artículos publicados
+                        {data.totalPosts} {t('dashboard.articlesCount')}
                       </Text>
                     </View>
                     <View style={styles.activityItem}>
@@ -577,7 +566,7 @@ export default function AuthorDashboard() {
                         styles.activityText,
                         { color: isDark ? '#D1D5DB' : '#374151' }
                       ]}>
-                        {data.totalViews.toLocaleString()} vistas totales
+                        {data.totalViews.toLocaleString()} {t('dashboard.totalViewsCount')}
                       </Text>
                     </View>
                     <View style={styles.activityItem}>
@@ -586,7 +575,7 @@ export default function AuthorDashboard() {
                         styles.activityText,
                         { color: isDark ? '#D1D5DB' : '#374151' }
                       ]}>
-                        {data.avgViewsPerPost.toFixed(1)} vistas promedio por artículo
+                        {data.avgViewsPerPost.toFixed(1)} {t('dashboard.avgViewsPerArticle')}
                       </Text>
                     </View>
                   </View>
@@ -647,7 +636,7 @@ const styles = StyleSheet.create({
   },
   timeSelectorContainer: {
     flexDirection: 'row',
-    borderRadius: 25,
+    borderRadius: 12,
     padding: 4,
     shadowColor: '#000',
     shadowOffset: {
@@ -665,7 +654,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 21,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 50,

@@ -107,7 +107,7 @@ const getWPStatsEndpoints = (siteId: string, timePeriod: string) => {
       daysParam = '&days=90';
       break;
     default:
-      daysParam = '&days=30';
+      daysParam = '&days=1';
   }
   
   return {

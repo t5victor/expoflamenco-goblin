@@ -3,8 +3,11 @@ import { DynamicColorIOS, Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useTranslation } from '@/hooks/useTranslation';
 
-export default function TabLayout() {
+function TabLayoutContent() {
+  const { t } = useTranslation();
+
   if (Platform.OS === 'ios') {
     return (
       <NativeTabs
@@ -22,19 +25,19 @@ export default function TabLayout() {
       }}>
         <NativeTabs.Trigger name="admin">
           <Icon sf="chart.bar.fill" />
-          <Label>Analytics</Label>
+          <Label>{t('nav.analytics')}</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="users">
           <Icon sf="doc.text.fill" />
-          <Label>Artículos</Label>
+          <Label>{t('nav.articles')}</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="subscriptions">
           <Icon sf="person.text.rectangle.fill" />
-          <Label>Perfil</Label>
+          <Label>{t('nav.profile')}</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="explore" tintColor="#DA2B1F">
           <Icon sf="gearshape.fill" />
-          <Label>Ajustes</Label>
+          <Label>{t('nav.settings')}</Label>
         </NativeTabs.Trigger>
       </NativeTabs>
     );
@@ -49,7 +52,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="admin"
         options={{
-          title: 'Analytics',
+          title: t('nav.analytics'),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={24} name="chart.bar.fill" color={color} />
           ),
@@ -58,7 +61,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="users"
         options={{
-          title: 'Artículos',
+          title: t('nav.articles'),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={24} name="doc.text.fill" color={color} />
           ),
@@ -67,7 +70,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="subscriptions"
         options={{
-          title: 'Perfil',
+          title: t('nav.profile'),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={24} name="person.text.rectangle.fill" color={color} />
           ),
@@ -76,7 +79,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Ajustes',
+          title: t('nav.settings'),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={24} name="gearshape.fill" color={color} />
           ),
@@ -84,4 +87,8 @@ export default function TabLayout() {
       />
     </Tabs>
   );
+}
+
+export default function TabLayout() {
+  return <TabLayoutContent />;
 }

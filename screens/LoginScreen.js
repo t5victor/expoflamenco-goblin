@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useTranslation } from '@/hooks/useTranslation';
 import { createApiUsers } from '@/services/apiUsers';
 
 export default function LoginScreen() {
@@ -20,6 +21,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -56,7 +58,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu usuario y contraseña');
+      Alert.alert(t('auth.authError'), t('auth.credentialsError'));
       return;
     }
 
@@ -64,23 +66,21 @@ export default function LoginScreen() {
     try {
       const success = await login(username.trim(), password.trim());
       if (!success) {
-        Alert.alert('Error', 'Usuario o contraseña incorrectos');
+        Alert.alert(t('auth.loginError'), t('auth.credentialsError'));
       }
     } catch (error) {
       console.error('Login error details:', error);
 
-      let errorMessage = 'Error al iniciar sesión. ';
+      let errorMessage = t('auth.serverError');
       if (error.message.includes('rest_no_route')) {
-        errorMessage += 'Parece que no tienes instalado un plugin JWT en WordPress. Instala "JWT Authentication for WP REST API".';
+        errorMessage = t('auth.jwtError');
       } else if (error.message.includes('404')) {
-        errorMessage += 'Endpoint de autenticación no encontrado. Verifica la configuración del servidor.';
+        errorMessage = t('auth.networkError');
       } else if (error.message.includes('401') || error.message.includes('403')) {
-        errorMessage += 'Credenciales incorrectas.';
-      } else {
-        errorMessage += error.message || 'Inténtalo de nuevo.';
+        errorMessage = t('auth.credentialsError');
       }
 
-      Alert.alert('Error de Autenticación', errorMessage);
+      Alert.alert(t('auth.authError'), errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -108,14 +108,14 @@ export default function LoginScreen() {
                 styles.title,
                 { color: isDark ? '#FFFFFF' : '#111827' }
               ]}>
-                Expoflamenco Analytics
+                {t('auth.loginTitle')}
               </Text>
             </View>
             <Text style={[
               styles.subtitle,
               { color: isDark ? '#D1D5DB' : '#374151' }
             ]}>
-              Accede a tus estadísticas personales de rendimiento
+              {t('auth.loginSubtitle')}
             </Text>
           </View>
 
@@ -129,7 +129,7 @@ export default function LoginScreen() {
                 styles.label,
                 { color: isDark ? '#D1D5DB' : '#374151' }
               ]}>
-                Usuario
+                {t('auth.username')}
               </Text>
               <TextInput
                 style={[
@@ -142,7 +142,7 @@ export default function LoginScreen() {
                 ]}
                 value={username}
                 onChangeText={setUsername}
-                placeholder="Ingresa tu usuario"
+                placeholder={t('auth.username').toLowerCase()}
                 placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -154,7 +154,7 @@ export default function LoginScreen() {
                 styles.label,
                 { color: isDark ? '#D1D5DB' : '#374151' }
               ]}>
-                Contraseña
+                {t('auth.password')}
               </Text>
               <TextInput
                 style={[
@@ -167,7 +167,7 @@ export default function LoginScreen() {
                 ]}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Ingresa tu contraseña"
+                placeholder={t('auth.password').toLowerCase()}
                 placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
                 secureTextEntry
                 autoCapitalize="none"
@@ -187,7 +187,7 @@ export default function LoginScreen() {
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.loginButtonText}>
-                  Iniciar Sesión
+                  {t('auth.loginButton')}
                 </Text>
               )}
             </TouchableOpacity>
@@ -204,7 +204,7 @@ export default function LoginScreen() {
                 styles.diagnosticButtonText,
                 { color: isDark ? '#9CA3AF' : '#6B7280' }
               ]}>
-                🔍 Diagnosticar Servidor
+                🔍 {t('auth.diagnosticButton')}
               </Text>
             </TouchableOpacity>
           </View>

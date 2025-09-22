@@ -1,242 +1,294 @@
+// Translation keys and structure
+export type Language = 'en' | 'es';
+
 export const translations = {
-  // Common
-  loading: 'Loading...',
-  error: 'Error',
-  save: 'Save',
-  cancel: 'Cancel',
-  delete: 'Delete',
-  edit: 'Edit',
-  add: 'Add',
-  search: 'Search',
-  filter: 'Filter',
-  export: 'Export',
-  refresh: 'Refresh',
-  settings: 'Settings',
-  back: 'Back',
-  next: 'Next',
-  previous: 'Previous',
-  
-  // Navigation
-  nav: {
-    overview: 'Overview',
-    analytics: 'Analytics',
-    users: 'Users', 
-    subscriptions: 'Subscriptions',
-    content: 'Content',
-    settings: 'Settings',
-    dashboard: 'Dashboard',
+  en: {
+    // Common
+    loading: 'Loading...',
+    error: 'Error',
+    save: 'Save',
+    cancel: 'Cancel',
+    delete: 'Delete',
+    edit: 'Edit',
+    add: 'Add',
+    search: 'Search',
+    filter: 'Filter',
+    export: 'Export',
+    refresh: 'Refresh',
+    back: 'Back',
+    next: 'Next',
+    previous: 'Previous',
+    logout: 'Logout',
+
+    // Auth
+    auth: {
+      loginTitle: 'Expoflamenco Analytics',
+      loginSubtitle: 'Access your personal performance statistics',
+      username: 'Username',
+      password: 'Password',
+      loginButton: 'Sign In',
+      diagnosticButton: 'Diagnose Server',
+      authError: 'Authentication Error',
+      loginError: 'Login Error',
+      credentialsError: 'Incorrect credentials',
+      serverError: 'Server error. Please try again.',
+      jwtError: 'JWT plugin not found. Please install "JWT Authentication for WP REST API".',
+      networkError: 'Network error. Check your connection.',
+    },
+
+    // Navigation
+    nav: {
+      analytics: 'Analytics',
+      articles: 'Articles',
+      profile: 'Profile',
+      settings: 'Settings',
+    },
+
+    // Dashboard
+    dashboard: {
+      title: 'Analytics Dashboard',
+      subtitle: 'Your performance metrics on Expoflamenco Revista',
+      totalViews: 'Total Views',
+      viewsTotal: 'Total views',
+      postsCount: 'Posts Count',
+      postsTotal: 'Total published articles',
+      postsTotalDesc: 'Total articles published',
+      avgViewsPerPost: 'Avg Views/Post',
+      avgViewsDesc: 'Average views per article',
+      topPostViews: 'Top Post Views',
+      topPostDesc: 'Best performing article',
+      articlesRecent: 'Recent Articles',
+      articlesRecentDesc: 'Recently published articles',
+      articlesRecentTitle: 'Recent Articles',
+      articlesRecentSubtitle: 'Recently published',
+      topPositionTitle: 'Top Position',
+      topPositionSubtitle: 'Article ranking',
+      statsSummary: 'Author Statistics',
+      articlesCount: 'articles published',
+      totalViewsCount: 'total views',
+      avgViewsPerArticle: 'average views per article',
+    },
+
+    // Articles
+    articles: {
+      title: 'My Articles',
+      subtitle: 'Performance and statistics of your publications',
+      sortByViews: 'Most Viewed',
+      sortByDate: 'Most Recent',
+      sortByEngagement: 'Best Engagement',
+      noArticles: 'No articles found',
+      noArticlesDesc: 'You haven\'t published any articles in the magazine yet.',
+      views: 'views',
+      engagement: 'engagement',
+      viewArticle: 'View Article',
+      refreshing: 'Refreshing...',
+      refresh: 'Refresh',
+    },
+
+    // Time periods
+    timePeriods: {
+      '24h': '24h',
+      '7d': '7d',
+      '30d': '30d',
+      '90d': '90d',
+    },
+
+    // Trends
+    trends: {
+      up: '↗',
+      down: '↘',
+      neutral: '→',
+      increased: 'increased',
+      decreased: 'decreased',
+      unchanged: 'unchanged',
+    },
+
+    // Languages
+    languages: {
+      english: 'English',
+      spanish: 'Español',
+      selectLanguage: 'Select Language',
+      languageSettings: 'Language Settings',
+    },
+
+    // Settings
+    settings: {
+      title: 'Settings',
+      subtitle: 'Configure your preferences',
+      logout: 'Logout',
+      logoutConfirm: 'Are you sure you want to logout?',
+    },
+
   },
-  
-  // Time period labels
-  todayVisitors: "Today's Visitors",
-  todaySubscriptions: "Today's Subscriptions", 
-  todayRevenue: "Today's Revenue",
-  weeklyVisitors: "Weekly Visitors",
-  weeklySubscriptions: "Weekly Subscriptions",
-  weeklyRevenue: "Weekly Revenue",
-  monthlyVisitors: "Monthly Visitors",
-  monthlySubscriptions: "Monthly Subscriptions",
-  monthlyRevenue: "Monthly Revenue",
-  quarterlyVisitors: "Quarterly Visitors",
-  quarterlySubscriptions: "Quarterly Subscriptions", 
-  quarterlyRevenue: "Quarterly Revenue",
-  
-  // Subscription types
-  allSubscriptions: "All Subscriptions",
-  freeSubscriptions: "Free Subscriptions", 
-  paidSubscriptions: "Paid Subscriptions",
-  fanSubscriptions: "Fan (Free)",
-  vipSubscriptions: "VIP (Paid)",
-  
-  // Chart labels
-  hourlyTraffic: "Hourly Traffic",
-  weeklyTraffic: "Weekly Traffic", 
-  monthlyTraffic: "Monthly Traffic",
-  quarterlyTraffic: "Quarterly Traffic",
-  trafficOverview: "Traffic Overview",
-  allSites: "All Sites",
-  
-  // Dashboard
-  dashboard: {
-    title: 'Overview',
-    subtitle: 'Real-time insights from MonsterInsights & FluentCRM',
-    todaysVisitors: "Today's Visitors",
-    newSubscriptions: 'New Subscriptions',
-    revenue: 'Revenue',
-    conversion: 'Conversion',
-    avgSession: 'Avg. Session',
-    activeMembers: 'Active Members',
-    weeklyTrafficOverview: 'Weekly Traffic Overview',
-    topCountries: 'Top Countries',
-    recentActivity: 'Recent Activity',
-    siteTrafficToday: 'Site traffic today',
-    paidMembershipsPro: 'Paid Memberships Pro',
-    thisMonth: 'This month',
-    visitorToSubscriber: 'Visitor to subscriber',
-    currentlyActive: 'Currently active',
-    newSubscribersLastHour: 'new subscribers in last hour',
-    highTrafficCoursesPage: 'High traffic on /courses page',
-    emailCampaignOpened: 'Email campaign opened by 234 users',
+
+  es: {
+    // Common
+    loading: 'Cargando...',
+    error: 'Error',
+    save: 'Guardar',
+    cancel: 'Cancelar',
+    delete: 'Eliminar',
+    edit: 'Editar',
+    add: 'Agregar',
+    search: 'Buscar',
+    filter: 'Filtrar',
+    export: 'Exportar',
+    refresh: 'Actualizar',
+    back: 'Atrás',
+    next: 'Siguiente',
+    previous: 'Anterior',
+    logout: 'Cerrar Sesión',
+
+    // Auth
+    auth: {
+      loginTitle: 'Expoflamenco Analytics',
+      loginSubtitle: 'Accede a tus estadísticas personales de rendimiento',
+      username: 'Usuario',
+      password: 'Contraseña',
+      loginButton: 'Iniciar Sesión',
+      diagnosticButton: 'Diagnosticar Servidor',
+      authError: 'Error de Autenticación',
+      loginError: 'Error de Inicio de Sesión',
+      credentialsError: 'Credenciales incorrectas',
+      serverError: 'Error del servidor. Inténtalo de nuevo.',
+      jwtError: 'Plugin JWT no encontrado. Instala "JWT Authentication for WP REST API".',
+      networkError: 'Error de red. Verifica tu conexión.',
+    },
+
+    // Navigation
+    nav: {
+      analytics: 'Analytics',
+      articles: 'Artículos',
+      profile: 'Perfil',
+      settings: 'Ajustes',
+    },
+
+    // Dashboard
+    dashboard: {
+      title: 'Panel de Analytics',
+      subtitle: 'Tus métricas de rendimiento en Expoflamenco Revista',
+      totalViews: 'Vistas Totales',
+      viewsTotal: 'Vistas totales',
+      postsCount: 'Artículos',
+      postsTotal: 'Total de artículos publicados',
+      postsTotalDesc: 'Total artículos publicados',
+      avgViewsPerPost: 'Promedio por Artículo',
+      avgViewsDesc: 'Promedio de vistas por artículo',
+      topPostViews: 'Mejor Artículo',
+      topPostDesc: 'Artículo con mejor rendimiento',
+      articlesRecent: 'Artículos Recientes',
+      articlesRecentDesc: 'Artículos publicados recientemente',
+      articlesRecentTitle: 'Artículos Recientes',
+      articlesRecentSubtitle: 'Publicados recientemente',
+      topPositionTitle: 'Mejor Posición',
+      topPositionSubtitle: 'Ranking de artículos',
+      statsSummary: 'Estadísticas del Autor',
+      articlesCount: 'artículos publicados',
+      totalViewsCount: 'vistas totales',
+      avgViewsPerArticle: 'vistas promedio por artículo',
+    },
+
+    // Articles
+    articles: {
+      title: 'Mis Artículos',
+      subtitle: 'Rendimiento y estadísticas de tus publicaciones',
+      sortByViews: 'Más Vistos',
+      sortByDate: 'Más Recientes',
+      sortByEngagement: 'Mejor Engagement',
+      noArticles: 'No hay artículos',
+      noArticlesDesc: 'Aún no has publicado ningún artículo en la revista.',
+      views: 'vistas',
+      engagement: 'engagement',
+      viewArticle: 'Ver Artículo',
+      refreshing: 'Actualizando...',
+      refresh: 'Actualizar',
+    },
+
+    // Time periods
+    timePeriods: {
+      '24h': '24h',
+      '7d': '7d',
+      '30d': '30d',
+      '90d': '90d',
+    },
+
+    // Trends
+    trends: {
+      up: '↗',
+      down: '↘',
+      neutral: '→',
+      increased: 'incrementado',
+      decreased: 'decrementado',
+      unchanged: 'sin cambios',
+    },
+
+    // Languages
+    languages: {
+      english: 'English',
+      spanish: 'Español',
+      selectLanguage: 'Seleccionar Idioma',
+      languageSettings: 'Configuración de Idioma',
+    },
+
+    // Settings
+    settings: {
+      title: 'Settings',
+      subtitle: 'Configure your preferences',
+      logout: 'Logout',
+      logoutConfirm: 'Are you sure you want to logout?',
+    },
+
   },
-  
-  // Analytics
-  analytics: {
-    title: 'Analytics',
-    subtitle: 'Detailed insights from MonsterInsights & Google Analytics',
-    weeklyTrafficBreakdown: 'Weekly Traffic Breakdown',
-    topPages: 'Top Pages',
-    trafficSources: 'Traffic Sources',
-    views: 'views',
-    visitors: 'visitors',
-    exit: 'exit',
-    organicSearch: 'Organic Search',
-    direct: 'Direct',
-    socialMedia: 'Social Media',
-    email: 'Email',
-    referral: 'Referral',
-  },
-  
-  // Users
-  users: {
-    title: 'Users',
-    subtitle: 'Manage subscribers and user accounts from FluentCRM',
-    addUser: 'Add User',
-    totalUsers: 'Total Users',
-    activeUsers: 'Active Users',
-    newThisMonth: 'New This Month',
-    allUsers: 'All Users',
-    active: 'Active',
-    fan: 'Fan',
-    vip: 'VIP',
-    userList: 'User List',
-    inactive: 'Inactive',
-    pending: 'Pending',
-    joined: 'Joined',
-    lastSeen: 'Last seen',
-    never: 'Never',
-    hoursAgo: 'hours ago',
-    dayAgo: 'day ago',
-    weekAgo: 'week ago',
-    minAgo: 'min ago',
-    fanUsers: 'Fan Users',
-    vipUsers: 'VIP Users',
-  },
-  
-  // Subscriptions
-  subscriptions: {
-    title: 'Subscriptions',
-    subtitle: 'Manage Fan and VIP subscriptions from Paid Memberships Pro',
-    fanTier: 'Fan Tier',
-    vipTier: 'VIP Tier',
-    freeTier: 'Free access to basic flamenco content',
-    paidTier: 'Premium access to exclusive content and events',
-    totalSubscriptions: 'Total Subscriptions',
-    activeSubscriptions: 'Active Subscriptions',
-    newThisMonth: 'New This Month',
-    monthlyRevenue: 'Monthly Revenue',
-    conversionRate: 'Conversion Rate',
-    churnRate: 'Churn Rate',
-    fanToVipConversion: 'Fan to VIP Conversion',
-    subscriptionsList: 'Subscriptions List',
-  },
-  
-  // Settings
-  settings: {
-    title: 'Settings',
-    subtitle: 'Configure your dashboard preferences and API connections',
-    apiConfiguration: 'API Configuration',
-    notifications: 'Notifications',
-    display: 'Display',
-    wordpressSiteUrl: 'WordPress Site URL',
-    wordpressSiteUrlDesc: 'Your Expoflamenco WordPress installation URL',
-    monsterInsightsApiKey: 'MonsterInsights API Key',
-    monsterInsightsApiKeyDesc: 'Required for analytics data',
-    fluentCrmApiKey: 'FluentCRM API Key',
-    fluentCrmApiKeyDesc: 'Required for CRM data',
-    paidMembershipsProApiKey: 'Paid Memberships Pro API Key',
-    paidMembershipsProApiKeyDesc: 'Required for subscription data',
-    testApiConnections: 'Test API Connections',
-    dailyReports: 'Daily Reports',
-    dailyReportsDesc: 'Receive daily analytics summaries',
-    newSubscriptionsNotif: 'New Subscriptions',
-    newSubscriptionsNotifDesc: 'Get notified when someone subscribes',
-    criticalAlerts: 'Critical Alerts',
-    criticalAlertsDesc: 'Important system notifications',
-    autoRefresh: 'Auto Refresh',
-    autoRefreshDesc: 'Automatically refresh dashboard data every 5 minutes',
-    compactView: 'Compact View',
-    compactViewDesc: 'Show more data in less space',
-    saveSettings: 'Save Settings',
-    settingsSaved: 'Settings Saved',
-    settingsSavedDesc: 'Your dashboard settings have been saved successfully.',
-    testingConnection: 'Testing Connection',
-    testingConnectionDesc: 'Testing API connections... This feature will be implemented to validate your API credentials.',
-    appVersion: 'Expoflamenco Admin Dashboard v1.0.0',
-    builtWith: 'Built with Expo & React Native',
-    enterApiKey: 'Enter API key',
-  },
-  
-  // Time filters
-  timeFilters: {
-    '24h': '24h',
-    '7d': '7d', 
-    '30d': '30d',
-    '90d': '90d',
-    last24h: 'Last 24h',
-    last7Days: 'Last 7 days',
-    last30Days: 'Last 30 days',
-    last3Months: 'Last 3 months',
-  },
-  
-  // Trends
-  trends: {
-    up: '+',
-    down: '-',
-    vsYesterday: 'vs yesterday',
-    vsLastMonth: 'vs last month',
-  },
-  
-  // Status
-  status: {
-    allSystemsOperational: 'All systems operational',
-  },
-  
-  // Countries
-  countries: {
-    spain: 'Spain',
-    usa: 'USA', 
-    france: 'France',
-  },
-  
-  // Days
-  days: {
-    monday: 'Mon',
-    tuesday: 'Tue', 
-    wednesday: 'Wed',
-    thursday: 'Thu',
-    friday: 'Fri',
-    saturday: 'Sat',
-    sunday: 'Sun',
-  },
-  
-  // Routes/Pages
-  routes: {
-    flamencoCoursesPage: '/flamenco-courses',
-    eventsPage: '/events',
-    aboutPage: '/about',
-    contactPage: '/contact',
-    blogPage: '/blog',
-    coursesPage: '/courses',
-  },
-  
-  // Actions
-  actions: {
-    exportTodaysAnalytics: 'Export today\'s analytics report',
-    viewDetailedSubscriptions: 'View detailed subscription analytics', 
-    manageFluentCrmCampaigns: 'Manage FluentCRM campaigns',
-    accessMonsterInsights: 'Access MonsterInsights detailed reports',
-    exportReport: 'Export Report',
-    manageUsers: 'Manage Users',
-    emailCampaign: 'Email Campaign',
+
+  es: {
+    // Common
+    loading: 'Cargando...',
+    error: 'Error',
+    save: 'Guardar',
+    cancel: 'Cancelar',
+    delete: 'Eliminar',
+    edit: 'Editar',
+    add: 'Agregar',
+    search: 'Buscar',
+    filter: 'Filtrar',
+    export: 'Exportar',
+    refresh: 'Actualizar',
+    settings: 'Configuración',
+    back: 'Atrás',
+    next: 'Siguiente',
+    previous: 'Anterior',
+    logout: 'Cerrar Sesión',
+
+    // Languages
+    languages: {
+      english: 'English',
+      spanish: 'Español',
+      selectLanguage: 'Seleccionar Idioma',
+      languageSettings: 'Configuración de Idioma',
+    },
+
+    // Settings
+    settings: {
+      title: 'Configuración',
+      subtitle: 'Configura tus preferencias',
+      logout: 'Cerrar Sesión',
+      logoutConfirm: '¿Estás seguro de que quieres cerrar sesión?',
+    },
+
   },
 };
+
+// Helper function to get translations
+export const getTranslation = (language: Language, key: string): string => {
+  const keys = key.split('.');
+  let value: any = translations[language];
+
+  for (const k of keys) {
+    value = value?.[k];
+  }
+
+  return value || key;
+};
+
+// Default language
+export const defaultLanguage: Language = 'es';
