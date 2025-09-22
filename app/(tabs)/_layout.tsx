@@ -9,15 +9,15 @@ export default function TabLayout() {
     return (
       <NativeTabs>
         <NativeTabs.Trigger name="admin">
-          <Icon sf="square.grid.2x2.fill" />
-          <Label>Dashboard</Label>
+          <Icon sf="tray.badge.fill" />
+          <Label>Inicio</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="users">
           <Icon sf="person.2.fill" />
           <Label>Users</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="subscriptions">
-          <Icon sf="creditcard.fill" />
+          <Icon sf="person.text.rectangle.fill" />
           <Label>Subscriptions</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="explore">
