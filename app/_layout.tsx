@@ -7,6 +7,7 @@ import { View, ActivityIndicator } from 'react-native';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { TranslationProvider } from '@/hooks/useTranslation';
 import LoginScreen from '@/screens/LoginScreen';
 
 function AppContent() {
@@ -44,19 +45,21 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Head>
-          <title>Expoflamenco Analytics</title>
-          <meta name="description" content="Analytics dashboard for Expoflamenco authors and contributors." />
-          <meta property="og:title" content="Expoflamenco Analytics" />
-          <meta property="og:description" content="Personal analytics dashboard for Expoflamenco authors and contributors." />
-          <meta property="og:image" content="/images/EF512.png" />
-          <link rel="icon" href="/images/EF512.png" />
-        </Head>
-        <AppContent />
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </AuthProvider>
+    <TranslationProvider>
+      <AuthProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Head>
+            <title>Expoflamenco Analytics</title>
+            <meta name="description" content="Analytics dashboard for Expoflamenco authors and contributors." />
+            <meta property="og:title" content="Expoflamenco Analytics" />
+            <meta property="og:description" content="Personal analytics dashboard for Expoflamenco authors and contributors." />
+            <meta property="og:image" content="/images/EF512.png" />
+            <link rel="icon" href="/images/EF512.png" />
+          </Head>
+          <AppContent />
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </AuthProvider>
+    </TranslationProvider>
   );
 }

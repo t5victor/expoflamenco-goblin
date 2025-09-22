@@ -48,6 +48,7 @@ export const translations = {
     dashboard: {
       title: 'Analytics Dashboard',
       subtitle: 'Your performance metrics on Expoflamenco Revista',
+      welcome: 'Welcome',
       totalViews: 'Total Views',
       viewsTotal: 'Total views',
       postsCount: 'Posts Count',
@@ -157,7 +158,7 @@ export const translations = {
 
     // Navigation
     nav: {
-      analytics: 'Analytics',
+      analytics: 'Analíticas',
       articles: 'Artículos',
       profile: 'Perfil',
       settings: 'Ajustes',
@@ -167,6 +168,7 @@ export const translations = {
     dashboard: {
       title: 'Panel de Analytics',
       subtitle: 'Tus métricas de rendimiento en Expoflamenco Revista',
+      welcome: 'Bienvenido',
       totalViews: 'Vistas Totales',
       viewsTotal: 'Vistas totales',
       postsCount: 'Artículos',
@@ -265,6 +267,77 @@ export const translations = {
       spanish: 'Español',
       selectLanguage: 'Seleccionar Idioma',
       languageSettings: 'Configuración de Idioma',
+    },
+
+    // Auth
+    auth: {
+      loginTitle: 'Expoflamenco Analytics',
+      loginSubtitle: 'Accede a tus estadísticas personales de rendimiento',
+      username: 'Usuario',
+      password: 'Contraseña',
+      loginButton: 'Iniciar Sesión',
+      loginError: 'Error de inicio de sesión',
+      serverError: 'Error del servidor. Inténtalo de nuevo.',
+      jwtError: 'Plugin JWT no encontrado. Instala "JWT Authentication for WP REST API".',
+      networkError: 'Error de red. Verifica tu conexión.',
+    },
+
+    // Navigation
+    nav: {
+      analytics: 'Analíticas',
+      articles: 'Artículos',
+      profile: 'Perfil',
+      settings: 'Ajustes',
+    },
+
+    // Dashboard
+    dashboard: {
+      title: 'Panel de Analytics',
+      subtitle: 'Tus métricas de rendimiento en Expoflamenco Revista',
+      welcome: 'Bienvenido',
+      totalViews: 'Vistas Totales',
+      viewsTotal: 'Vistas totales',
+      postsCount: 'Artículos',
+      postsTotal: 'Total de artículos publicados',
+      postsTotalDesc: 'Total artículos publicados',
+      avgViewsPerPost: 'Promedio por Artículo',
+      avgViewsDesc: 'Promedio de vistas por artículo',
+      topPostViews: 'Mejor Artículo',
+      topPostDesc: 'Tu artículo más visto',
+    },
+
+    // Articles
+    articles: {
+      title: 'Mis Artículos',
+      subtitle: 'Gestiona y analiza el rendimiento de tus artículos',
+      noArticles: 'No se encontraron artículos',
+      noArticlesDesc: 'No tienes artículos publicados aún',
+      sortBy: 'Ordenar por',
+      mostViewed: 'Más Vistos',
+      mostRecent: 'Más Recientes',
+      bestEngagement: 'Mejor Interacción',
+      views: 'vistas',
+      published: 'Publicado',
+      readMore: 'Leer más',
+      articleStats: 'Estadísticas del Artículo',
+    },
+
+    // Time Periods
+    timePeriods: {
+      '24h': '24h',
+      '7d': '7d',
+      '30d': '30d',
+      '90d': '90d',
+    },
+
+    // Trends
+    trends: {
+      up: '↗',
+      down: '↘',
+      neutral: '→',
+      increased: 'incrementado',
+      decreased: 'decrementado',
+      unchanged: 'sin cambios',
     },
 
     // Settings
