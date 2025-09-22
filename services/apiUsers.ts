@@ -10,10 +10,14 @@ export interface ApiUsersConfig {
 }
 
 export interface JwtAuthToken {
-  token: string;
+  token?: string;
+  access_token?: string;  // Algunos plugins usan este campo
+  jwt?: string;           // Otro nombre posible
   user_email?: string;
   user_display_name?: string;
-  /** Algunos plugins devuelven "user_nicename" o "user_id"; no confiar ciegamente, se valida con /users/me */
+  user_id?: number;
+  user_nicename?: string;
+  /** Campos adicionales que pueden variar por plugin */
   [k: string]: unknown;
 }
 
@@ -52,7 +56,7 @@ export interface UserStatsSummary {
   range?: DateRange;
 }
 
-type HttpMethod = "GET" | "POST";
+type HttpMethod = "GET" | "POST" | "HEAD";
 
 type StatsRoutes = {
   /** Ruta por post. Ajusta si tu WP-Statistics usa otro namespace o parámetros. */
@@ -146,21 +150,105 @@ export class ApiUsers {
     }
   }
 
-  /** Login JWT contra /jwt-auth/v1/token */
-  async login(site: SiteKey, username: string, password: string): Promise<AuthSession> {
-    const tokenResp = await this.jsonFetch<JwtAuthToken>(site, `/wp-json/jwt-auth/v1/token`, {
-      method: "POST",
-      body: { username, password },
-    });
+  /** Diagnóstico de autenticación disponible */
+  async diagnoseAuth(site: SiteKey): Promise<{
+    jwtEndpoints: Record<string, boolean>;
+    basicAuth: boolean;
+    recommendations: string[];
+  }> {
+    const results = {
+      jwtEndpoints: {} as Record<string, boolean>,
+      basicAuth: false,
+      recommendations: [] as string[]
+    };
 
-    // Validación inmediata (si el plugin expone /token/validate)
-    try {
-      await this.jsonFetch(site, `/wp-json/jwt-auth/v1/token/validate`, {
-        method: "POST",
-        token: tokenResp.token,
-      });
-    } catch (_) {
-      // Algunos setups no exponen validate; no bloquea, pero lo intentamos.
+    // Verificar endpoints JWT
+    const jwtEndpoints = [
+      '/wp-json/jwt-auth/v1/token',
+      '/wp-json/simple-jwt-login/v1/auth',
+      '/wp-json/wp/v2/jwt-auth/token',
+      '/wp-json/api/v1/token',
+    ];
+
+    for (const endpoint of jwtEndpoints) {
+      try {
+        await this.jsonFetch(site, endpoint.replace('/token', '').replace('/auth', '') + '/?test=1', {
+          method: 'HEAD'
+        });
+        results.jwtEndpoints[endpoint] = true;
+      } catch {
+        results.jwtEndpoints[endpoint] = false;
+      }
+    }
+
+    // Verificar si hay algún endpoint JWT disponible
+    const hasJwt = Object.values(results.jwtEndpoints).some(available => available);
+    if (!hasJwt) {
+      results.recommendations.push('Instala un plugin JWT para WordPress: "JWT Authentication for WP REST API"');
+    }
+
+    return results;
+  }
+
+  /** Login JWT - intenta múltiples endpoints comunes */
+  async login(site: SiteKey, username: string, password: string): Promise<AuthSession> {
+    let tokenResp: JwtAuthToken | undefined;
+    let usedEndpoint = '';
+
+    // Intenta múltiples endpoints JWT comunes
+    const jwtEndpoints = [
+      '/wp-json/jwt-auth/v1/token',           // Plugin: JWT Authentication for WP REST API
+      '/wp-json/simple-jwt-login/v1/auth',    // Plugin: Simple JWT Login
+      '/wp-json/wp/v2/jwt-auth/token',        // Otro plugin común
+      '/wp-json/api/v1/token',                // Variante
+    ];
+
+    let lastError: any = null;
+
+    for (const endpoint of jwtEndpoints) {
+      try {
+        console.log(`🔐 Intentando login en ${endpoint}...`);
+        tokenResp = await this.jsonFetch<JwtAuthToken>(site, endpoint, {
+          method: "POST",
+          body: { username, password },
+        });
+
+        // Verificar que tenemos un token válido
+        const actualToken = tokenResp.token || tokenResp.access_token || tokenResp.jwt;
+        if (!actualToken) {
+          throw new Error('Respuesta de login no contiene token válido');
+        }
+
+        // Normalizar el token al campo 'token'
+        tokenResp.token = actualToken;
+
+        usedEndpoint = endpoint;
+        console.log(`✅ Login exitoso usando ${endpoint}`);
+        break;
+      } catch (error: any) {
+        console.log(`❌ Endpoint ${endpoint} falló:`, error.message);
+        lastError = error;
+        continue;
+      }
+    }
+
+    if (!tokenResp) {
+      console.error('🚨 Todos los endpoints JWT fallaron');
+      console.error('Último error:', lastError);
+      throw new Error(`No se pudo autenticar. Asegúrate de que tienes instalado un plugin JWT válido en WordPress. Último error: ${lastError?.message || 'Desconocido'}`);
+    }
+
+    // Validación del token (si está disponible)
+    if (usedEndpoint.includes('jwt-auth') && tokenResp.token) {
+      try {
+        await this.jsonFetch(site, `/wp-json/jwt-auth/v1/token/validate`, {
+          method: "POST",
+          token: tokenResp.token,
+        });
+        console.log('✅ Token validado');
+      } catch (_) {
+        console.log('⚠️ No se pudo validar el token, continuando...');
+      }
     }
 
     // Usuario real y roles via REST nativo
@@ -170,17 +258,30 @@ export class ApiUsers {
       email?: string;
       roles?: string[];
     };
-    const me = await this.jsonFetch<Me>(site, `/wp-json/wp/v2/users/me`, {
-      token: tokenResp.token,
-    });
 
-    return {
-      token: tokenResp.token,
-      userId: me.id,
-      name: me.name,
-      email: me.email ?? null,
-      roles: me.roles,
-    };
+    try {
+      const me = await this.jsonFetch<Me>(site, `/wp-json/wp/v2/users/me`, {
+        token: tokenResp.token!,
+      });
+
+      return {
+        token: tokenResp.token!,
+        userId: me.id,
+        name: me.name,
+        email: me.email ?? null,
+        roles: me.roles,
+      };
+    } catch (meError) {
+      // Si falla /users/me, intentamos obtener info del token
+      console.log('⚠️ No se pudo obtener info de /users/me, usando datos del token');
+      return {
+        token: tokenResp.token!,
+        userId: tokenResp.user_id || 0,
+        name: tokenResp.user_display_name || username,
+        email: tokenResp.user_email || null,
+        roles: [],
+      };
+    }
   }
 
   /** Posts del autor en REST nativo. Ajusta per_page según necesidades. */

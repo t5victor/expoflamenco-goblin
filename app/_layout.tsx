@@ -3,8 +3,34 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Head from 'expo-router/head';
+import { View, ActivityIndicator } from 'react-native';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import LoginScreen from '@/screens/LoginScreen';
+
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
+
+  return (
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="+not-found" />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -18,20 +44,19 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Head>
-        <title>Expoflamenco - Admin Panel</title>
-        <meta name="description" content="Goblin is a groundbreaking new Expo capability that lets managers stealthily unlock and seize high-value data intelligence." />
-        <meta property="og:title" content="Expoflamenco - Admin Panel" />
-        <meta property="og:description" content="Goblin is a groundbreaking new Expo capability that lets managers stealthily unlock and seize high-value data intelligence." />
-        <meta property="og:image" content="/images/EF512.png" />
-        <link rel="icon" href="/images/EF512.png" />
-      </Head>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Head>
+          <title>Expoflamenco Analytics</title>
+          <meta name="description" content="Analytics dashboard for Expoflamenco authors and contributors." />
+          <meta property="og:title" content="Expoflamenco Analytics" />
+          <meta property="og:description" content="Personal analytics dashboard for Expoflamenco authors and contributors." />
+          <meta property="og:image" content="/images/EF512.png" />
+          <link rel="icon" href="/images/EF512.png" />
+        </Head>
+        <AppContent />
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

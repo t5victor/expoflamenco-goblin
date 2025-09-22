@@ -1,113 +1,80 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Image, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/Sidebar';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { fetchExpoFlamencoUsers, type ProcessedUser } from '@/services/api';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { authorAnalyticsService } from '@/services/authorAnalytics';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 const isMobile = screenWidth < 768;
 
-export default function UsersScreen() {
+interface ArticleWithAnalytics {
+  post: {
+    id: number;
+    title: { rendered: string };
+    date: string;
+    modified: string;
+    link: string;
+  };
+  views: number;
+  engagement: number;
+}
+
+export default function ArticlesScreen() {
   const colorScheme = useColorScheme();
+  const { user } = useAuth();
   const isDark = colorScheme === 'dark';
-  const [selectedFilter, setSelectedFilter] = useState('all');
-  const [users, setUsers] = useState<ProcessedUser[]>([]);
+  const [articles, setArticles] = useState<ArticleWithAnalytics[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [sortBy, setSortBy] = useState<'views' | 'date' | 'engagement'>('views');
 
   useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        setLoading(true);
-        const fetchedUsers = await fetchExpoFlamencoUsers();
-        setUsers(fetchedUsers);
-      } catch (error) {
-        console.error('Error loading users:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUsers();
-  }, []);
-
-  // Filter users based on search query and selected filter
-  const filteredUsers = users.filter(user => {
-    // Search filter
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (!matchesSearch) return false;
-    
-    // Role filter based on real WordPress roles
-    switch (selectedFilter) {
-      case 'all':
-        return true;
-      case 'administrators':
-        return user.role === 'Administrador';
-      case 'editors':
-        return user.role === 'Editor';
-      case 'authors':
-        return user.role === 'Autor';
-      case 'contributors':
-        return user.role === 'Colaborador';
-      case 'writers':
-        return user.role === 'Escritor';
-      default:
-        return true;
+    if (user) {
+      loadArticles();
     }
-  });
+  }, [user, sortBy]);
 
-  const userStats = {
-    totalUsers: users.length,
-    activeUsers: users.filter(u => u.status === 'active').length,
-    newThisMonth: Math.floor(users.length * 0.1), // Estimated 10% are new
-    premiumUsers: Math.floor(users.length * 0.4), // Estimated 40% premium
-    basicUsers: Math.floor(users.length * 0.4), // Estimated 40% basic
-    freeUsers: Math.floor(users.length * 0.2), // Estimated 20% free
-  };
+  const loadArticles = async () => {
+    if (!user) return;
 
-  const filters = [
-    { id: 'all', label: 'Todo el Equipo', count: userStats.totalUsers, icon: 'users' },
-    { id: 'administrators', label: 'Administradores', count: users.filter(u => u.role === 'Administrador').length, icon: 'shield' },
-    { id: 'editors', label: 'Editores', count: users.filter(u => u.role === 'Editor').length, icon: 'edit-3' },
-    { id: 'authors', label: 'Autores', count: users.filter(u => u.role === 'Autor').length, icon: 'feather' },
-    { id: 'contributors', label: 'Colaboradores', count: users.filter(u => u.role === 'Colaborador').length, icon: 'users' },
-    { id: 'writers', label: 'Escritores', count: users.filter(u => u.role === 'Escritor').length, icon: 'pen-tool' },
-  ];
+    try {
+      setLoading(true);
+      const articlesWithAnalytics = await authorAnalyticsService.getAuthorPostsWithAnalytics(
+        user.userId,
+        user.token
+      );
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return '#10B981';
-      case 'inactive': return '#EF4444';
-      case 'pending': return '#F59E0B';
-      default: return '#6B7280';
+      // Sort articles based on selected criteria
+      const sortedArticles = [...articlesWithAnalytics].sort((a, b) => {
+        switch (sortBy) {
+          case 'views':
+            return b.views - a.views;
+          case 'date':
+            return new Date(b.post.date).getTime() - new Date(a.post.date).getTime();
+          case 'engagement':
+            return b.engagement - a.engagement;
+          default:
+            return b.views - a.views;
+        }
+      });
+
+      setArticles(sortedArticles);
+    } catch (error) {
+      console.error('Error loading articles:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getRoleColor = (role: string = 'Lector') => {
-    switch (role) {
-      case 'Administrador': return '#DC2626'; // Red
-      case 'Editor': return '#8B5CF6'; // Purple
-      case 'Autor': return '#EF4444'; // Red-Orange
-      case 'Colaborador': return '#3B82F6'; // Blue
-      case 'Escritor': return '#10B981'; // Green
-      default: return '#6B7280'; // Gray
-    }
-  };
-
-  const getMembershipColor = (membershipLevel: string = 'Free') => {
-    switch (membershipLevel) {
-      case 'VIP': return '#8B5CF6'; // Purple
-      case 'Premium': return '#3B82F6'; // Blue
-      case 'Free': return '#6B7280'; // Gray
-      default: return '#6B7280'; // Gray
-    }
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadArticles();
+    setRefreshing(false);
   };
 
   if (loading) {
@@ -116,19 +83,14 @@ export default function UsersScreen() {
         styles.container,
         { backgroundColor: isDark ? '#111827' : '#F9FAFB' }
       ]}>
-        <View style={styles.layout}>
-          <Sidebar activeTab="users" onTabChange={() => {}} />
-          <View style={styles.content}>
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#3B82F6" />
-              <Text style={[
-                styles.loadingText,
-                { color: isDark ? '#FFFFFF' : '#111827' }
-              ]}>
-                Cargando usuarios de ExpoFlamenco...
-              </Text>
-            </View>
-          </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={isDark ? '#FFFFFF' : '#111827'} />
+          <Text style={[
+            styles.loadingText,
+            { color: isDark ? '#FFFFFF' : '#111827' }
+          ]}>
+            Cargando artículos...
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -140,313 +102,207 @@ export default function UsersScreen() {
       { backgroundColor: isDark ? '#111827' : '#F9FAFB' }
     ]}>
       <View style={styles.layout}>
-        {!isMobile && <Sidebar activeTab="users" onTabChange={() => {}} />}
-        
+        {!isMobile && <Sidebar activeTab="articles" onTabChange={() => {}} />}
+
         <View style={styles.content}>
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.scrollView}
+            refreshControl={
+              <TouchableOpacity onPress={onRefresh} disabled={refreshing}>
+                <View style={styles.refreshContainer}>
+                  <IconSymbol name="arrow.clockwise" size={16} color={isDark ? '#FFFFFF' : '#374151'} />
+                  <Text style={[
+                    styles.refreshText,
+                    { color: isDark ? '#FFFFFF' : '#374151' }
+                  ]}>
+                    {refreshing ? 'Actualizando...' : 'Actualizar'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            }
+            showsVerticalScrollIndicator={false}
+          >
             {/* Header */}
-            <View style={[styles.header, isMobile && styles.headerMobile]}>
-              <View style={styles.headerContent}>
+            <View style={[styles.header, isMobile && styles.mobileHeader]}>
+              <View style={styles.headerLeft}>
                 <Text style={[
                   styles.headerTitle,
-                  { color: isDark ? '#FFFFFF' : '#111827' },
-                  isMobile && styles.headerTitleMobile
+                  { color: isDark ? '#FFFFFF' : '#111827' }
                 ]}>
-                  Usuarios ExpoFlamenco
+                  Mis Artículos
                 </Text>
                 <Text style={[
                   styles.headerSubtitle,
-                  { color: isDark ? '#9CA3AF' : '#6B7280' },
-                  isMobile && styles.headerSubtitleMobile
+                  { color: isDark ? '#9CA3AF' : '#6B7280' }
                 ]}>
-                  Gestión de usuarios y colaboradores de la plataforma
+                  Rendimiento y estadísticas de tus publicaciones
                 </Text>
               </View>
-              
-              {!isMobile && (
-                <TouchableOpacity style={[
-                  styles.addButton,
-                  { backgroundColor: '#3B82F6' }
+
+              {/* Sort Controls */}
+              <View style={[styles.headerActions, isMobile && styles.mobileHeaderActions]}>
+                <View style={[
+                  styles.sortSelectorContainer,
+                  isMobile && styles.mobileSortSelectorContainer,
+                  { backgroundColor: isDark ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.8)' }
                 ]}>
-                  <Feather name="plus" size={16} color="white" />
-                  <Text style={styles.addButtonText}>Añadir Usuario</Text>
-                </TouchableOpacity>
-              )}
+                  {[
+                    { id: 'views', label: 'Más Vistos', icon: 'eye' },
+                    { id: 'date', label: 'Más Recientes', icon: 'calendar' },
+                    { id: 'engagement', label: 'Mejor Engagement', icon: 'arrow.up' },
+                  ].map((sort, index) => (
+                    <TouchableOpacity
+                      key={sort.id}
+                      style={[
+                        styles.sortSelectorButton,
+                        isMobile && styles.mobileSortSelectorButton,
+                        index === 0 && styles.sortSelectorButtonFirst,
+                        index === 2 && styles.sortSelectorButtonLast,
+                        sortBy === sort.id && styles.sortSelectorButtonActive,
+                        sortBy === sort.id && {
+                          backgroundColor: '#DA2B1F',
+                          shadowColor: '#DA2B1F',
+                        }
+                      ]}
+                      onPress={() => setSortBy(sort.id as any)}
+                    >
+                      <Feather
+                        name={sort.icon as any}
+                        size={isMobile ? 16 : 14}
+                        color={sortBy === sort.id ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#6B7280')}
+                      />
+                      {!isMobile && (
+                        <Text style={[
+                          styles.sortSelectorText,
+                          sortBy === sort.id && styles.sortSelectorTextActive,
+                          {
+                            color: sortBy === sort.id
+                              ? '#FFFFFF'
+                              : (isDark ? '#D1D5DB' : '#374151')
+                          }
+                        ]}>
+                          {sort.label}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
             </View>
 
-            <View style={[styles.dashboardGrid, isMobile && styles.dashboardGridMobile]}>
-              {/* User Stats */}
-              <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
-                <View style={[
-                  styles.statCard,
-                  isMobile && styles.statCardMobile,
-                  { 
-                    backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-                    borderColor: isDark ? '#374151' : '#E5E7EB'
-                  }
-                ]}>
-                  <View style={styles.statHeader}>
-                    <Feather name="users" size={20} color="#3B82F6" />
-                    <Text style={[
-                      styles.statValue,
-                      { color: isDark ? '#FFFFFF' : '#111827' }
-                    ]}>
-                      {userStats.totalUsers.toLocaleString()}
-                    </Text>
-                  </View>
+            {/* Articles List */}
+            <View style={[styles.articlesGrid, isMobile && styles.mobileArticlesGrid]}>
+              {articles.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <IconSymbol name="doc" size={48} color={isDark ? '#6B7280' : '#9CA3AF'} />
                   <Text style={[
-                    styles.statLabel,
+                    styles.emptyTitle,
+                    { color: isDark ? '#FFFFFF' : '#111827' }
+                  ]}>
+                    No hay artículos
+                  </Text>
+                  <Text style={[
+                    styles.emptySubtitle,
                     { color: isDark ? '#9CA3AF' : '#6B7280' }
                   ]}>
-                    Equipo Total
+                    Aún no has publicado ningún artículo en la revista.
                   </Text>
                 </View>
-              </View>
-
-              {/* Role Filter Dropdown */}
-              <View style={[styles.filtersContainer, isMobile && styles.filtersContainerMobile]}>
-                <Text style={[
-                  styles.filtersTitle,
-                  { color: isDark ? '#FFFFFF' : '#111827' }
-                ]}>
-                  Filtrar por Rol:
-                </Text>
-                <TouchableOpacity
-                  style={[
-                    styles.dropdown,
-                    { 
-                      backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-                      borderColor: isDark ? '#374151' : '#E5E7EB'
-                    }
-                  ]}
-                  onPress={() => setShowDropdown(!showDropdown)}
-                >
-                  <Text style={[
-                    styles.dropdownText,
-                    { color: isDark ? '#FFFFFF' : '#111827' }
-                  ]}>
-                    {filters.find(f => f.id === selectedFilter)?.label || 'Seleccionar rol'}
-                  </Text>
-                  <Feather 
-                    name={showDropdown ? 'chevron-up' : 'chevron-down'} 
-                    size={16} 
-                    color={isDark ? '#9CA3AF' : '#6B7280'} 
-                  />
-                </TouchableOpacity>
-                
-                {showDropdown && (
-                  <View style={[
-                    styles.dropdownMenu,
-                    { 
-                      backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-                      borderColor: isDark ? '#374151' : '#E5E7EB'
-                    }
-                  ]}>
-                    {filters.map((filter) => (
-                      <TouchableOpacity
-                        key={filter.id}
-                        style={[
-                          styles.dropdownItem,
-                          selectedFilter === filter.id && styles.dropdownItemSelected,
-                          selectedFilter === filter.id && { backgroundColor: '#3B82F6' + '20' }
-                        ]}
-                        onPress={() => {
-                          setSelectedFilter(filter.id);
-                          setShowDropdown(false);
-                        }}
-                      >
-                        <Feather 
-                          name={filter.icon as any} 
-                          size={14} 
-                          color={selectedFilter === filter.id 
-                            ? '#3B82F6'
-                            : (isDark ? '#9CA3AF' : '#6B7280')
-                          } 
-                        />
+              ) : (
+                articles.map((article, index) => (
+                  <View
+                    key={article.post.id}
+                    style={[
+                      styles.articleCard,
+                      { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }
+                    ]}
+                  >
+                    <View style={styles.articleHeader}>
+                      <View style={styles.articleMeta}>
                         <Text style={[
-                          styles.dropdownItemText,
-                          { 
-                            color: selectedFilter === filter.id 
-                              ? '#3B82F6'
-                              : (isDark ? '#FFFFFF' : '#111827')
-                          }
+                          styles.articleDate,
+                          { color: isDark ? '#9CA3AF' : '#6B7280' }
                         ]}>
-                          {filter.label}
+                          {new Date(article.post.date).toLocaleDateString('es-ES')}
                         </Text>
-                        <Text style={[
-                          styles.dropdownItemCount,
-                          { 
-                            color: selectedFilter === filter.id 
-                              ? '#3B82F6'
-                              : (isDark ? '#9CA3AF' : '#6B7280')
-                          }
+                        <View style={[
+                          styles.rankBadge,
+                          { backgroundColor: isDark ? '#374151' : '#F3F4F6' }
                         ]}>
-                          ({filter.count})
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-
-              {/* Users Table */}
-              <View style={[
-                styles.usersTable,
-                isMobile && styles.usersTableMobile,
-                { 
-                  backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-                  borderColor: isDark ? '#374151' : '#E5E7EB'
-                }
-              ]}>
-                <View style={[styles.tableHeader, isMobile && styles.tableHeaderMobile]}>
-                  <Text style={[
-                    styles.tableTitle,
-                    { color: isDark ? '#FFFFFF' : '#111827' }
-                  ]}>
-                    Lista de Usuarios ({filteredUsers.length})
-                  </Text>
-                  <View style={styles.tableActions}>
-                    <TouchableOpacity 
-                      style={styles.actionButton}
-                      onPress={() => setSearchQuery('')}
-                    >
-                      <Feather name="search" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Feather name="filter" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Feather name="download" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.tableContent}>
-                  {filteredUsers.length === 0 ? (
-                    <View style={styles.emptyState}>
-                      <Feather name="users" size={48} color={isDark ? '#374151' : '#E5E7EB'} />
-                      <Text style={[
-                        styles.emptyStateText,
-                        { color: isDark ? '#9CA3AF' : '#6B7280' }
-                      ]}>
-                        No se encontraron usuarios
-                      </Text>
-                    </View>
-                  ) : (
-                    filteredUsers.map((user) => (
-                      <View key={user.id} style={[
-                        styles.userCard,
-                        isMobile && styles.userCardMobile,
-                        { 
-                          backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-                          borderColor: isDark ? '#374151' : '#E5E7EB'
-                        }
-                      ]}>
-                        <View style={styles.userCardContent}>
-                          <View style={styles.userAvatarContainer}>
-                            {user.avatar ? (
-                              <Image 
-                                source={{ uri: user.avatar }} 
-                                style={styles.userAvatar}
-                                onError={() => console.log('Avatar failed to load')}
-                              />
-                            ) : (
-                              <View style={[styles.userAvatar, styles.userAvatarFallback]}>
-                                <Text style={styles.avatarText}>
-                                  {user.name.charAt(0).toUpperCase()}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                          
-                          <View style={styles.userInfo}>
-                            <TouchableOpacity 
-                              onPress={() => {
-                                if (user.slug) {
-                                  router.push(`/user/${user.slug}`);
-                                }
-                              }}
-                            >
-                              <Text style={[
-                                styles.userName,
-                                { color: isDark ? '#FFFFFF' : '#111827' }
-                              ]}>
-                                {user.name}
-                              </Text>
-                            </TouchableOpacity>
-                            
-                            <Text style={[
-                              styles.userDescription,
-                              { color: isDark ? '#9CA3AF' : '#6B7280' }
-                            ]} numberOfLines={isMobile ? 3 : 2}>
-                              {user.description}
-                            </Text>
-                            
-                            <View style={styles.userBadges}>
-                              <View style={[
-                                styles.roleBadge,
-                                { backgroundColor: getRoleColor(user.role) + '20' }
-                              ]}>
-                                <Text style={[
-                                  styles.roleText,
-                                  { color: getRoleColor(user.role) }
-                                ]}>
-                                  {user.role || 'Colaborador'}
-                                </Text>
-                              </View>
-                              
-                              {user.isVIP && (
-                                <View style={[
-                                  styles.membershipBadge,
-                                  { backgroundColor: getMembershipColor(user.membershipLevel) + '20' }
-                                ]}>
-                                  <Text style={[
-                                    styles.membershipText,
-                                    { color: getMembershipColor(user.membershipLevel) }
-                                  ]}>
-                                    {user.membershipLevel}
-                                  </Text>
-                                </View>
-                              )}
-                              
-                              <View style={[
-                                styles.statusBadge,
-                                { backgroundColor: getStatusColor(user.status) + '20' }
-                              ]}>
-                                <Text style={[
-                                  styles.statusText,
-                                  { color: getStatusColor(user.status) }
-                                ]}>
-                                  {user.status}
-                                </Text>
-                              </View>
-                            </View>
-                          </View>
+                          <Text style={[
+                            styles.rankText,
+                            { color: isDark ? '#FFFFFF' : '#374151' }
+                          ]}>
+                            #{index + 1}
+                          </Text>
                         </View>
-
-                        {!isMobile && (
-                          <View style={styles.userStats}>
-                            <Text style={[
-                              styles.articlesCount,
-                              { color: isDark ? '#9CA3AF' : '#6B7280' }
-                            ]}>
-                              {user.articlesCount || 0} artículos
-                            </Text>
-                            
-                            <Text style={[
-                              styles.joinDate,
-                              { color: isDark ? '#9CA3AF' : '#6B7280' }
-                            ]}>
-                              Desde {user.joinDate}
-                            </Text>
-                          </View>
-                        )}
-
                       </View>
-                    ))
-                  )}
-                </View>
-              </View>
+                    </View>
+
+                    <Text style={[
+                      styles.articleTitle,
+                      { color: isDark ? '#FFFFFF' : '#111827' }
+                    ]} numberOfLines={2}>
+                      {article.post.title.rendered}
+                    </Text>
+
+                    <View style={styles.articleStats}>
+                      <View style={styles.statItem}>
+                        <IconSymbol name="eye" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                        <Text style={[
+                          styles.statValue,
+                          { color: isDark ? '#FFFFFF' : '#111827' }
+                        ]}>
+                          {article.views.toLocaleString()}
+                        </Text>
+                        <Text style={[
+                          styles.statLabel,
+                          { color: isDark ? '#9CA3AF' : '#6B7280' }
+                        ]}>
+                          vistas
+                        </Text>
+                      </View>
+
+                      <View style={styles.statItem}>
+                        <IconSymbol name="arrow.up" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                        <Text style={[
+                          styles.statValue,
+                          { color: isDark ? '#FFFFFF' : '#111827' }
+                        ]}>
+                          {article.engagement.toFixed(1)}%
+                        </Text>
+                        <Text style={[
+                          styles.statLabel,
+                          { color: isDark ? '#9CA3AF' : '#6B7280' }
+                        ]}>
+                          engagement
+                        </Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.articleLink,
+                        { borderColor: isDark ? '#374151' : '#E5E7EB' }
+                      ]}
+                      onPress={() => {
+                        // Open article link
+                        if (Platform.OS === 'web') {
+                          window.open(article.post.link, '_blank');
+                        }
+                      }}
+                    >
+                      <Text style={[
+                        styles.linkText,
+                        { color: '#DA2B1F' }
+                      ]}>
+                        Ver artículo
+                      </Text>
+                      <IconSymbol name="arrow.up.right.square" size={14} color="#DA2B1F" />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
             </View>
           </ScrollView>
         </View>
@@ -469,300 +325,222 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  refreshContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 8,
+  },
+  refreshText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  sortSelectorContainer: {
+    flexDirection: 'row',
+    borderRadius: 25,
+    padding: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    backdropFilter: 'blur(10px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  sortSelectorButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 21,
+    justifyContent: 'center',
+    gap: 6,
+    minWidth: 50,
+  },
+  sortSelectorButtonFirst: {
+    marginLeft: 0,
+  },
+  sortSelectorButtonLast: {
+    marginRight: 0,
+  },
+  sortSelectorButtonActive: {
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  sortSelectorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  sortSelectorTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     fontWeight: '500',
   },
-  header: {
-    flexDirection: isMobile ? 'column' : 'row',
-    justifyContent: 'space-between',
-    alignItems: isMobile ? 'flex-start' : 'flex-start',
-    paddingHorizontal: isMobile ? 16 : 24,
-    paddingVertical: isMobile ? 16 : 20,
-  },
-  headerMobile: {
+  mobileHeader: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
     gap: 16,
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: isMobile ? 20 : 24,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  headerTitleMobile: {
-    fontSize: 20,
-  },
-  headerSubtitle: {
-    fontSize: isMobile ? 13 : 14,
-  },
-  headerSubtitleMobile: {
-    fontSize: 13,
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    gap: 6,
-  },
-  addButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  dashboardGrid: {
-    paddingHorizontal: isMobile ? 16 : 24,
-    paddingBottom: 24,
-  },
-  dashboardGridMobile: {
     paddingHorizontal: 16,
   },
-  statsRow: {
-    flexDirection: isMobile ? 'column' : 'row',
-    gap: isMobile ? 12 : 16,
-    marginBottom: 24,
-  },
-  statsRowMobile: {
+  mobileHeaderActions: {
     flexDirection: 'column',
     gap: 12,
+    alignItems: 'stretch',
   },
-  statCard: {
-    flex: isMobile ? undefined : 1,
-    padding: isMobile ? 16 : 20,
-    borderRadius: 8,
-    borderWidth: 1,
+  mobileSortSelectorContainer: {
+    marginHorizontal: 16,
   },
-  statCardMobile: {
-    padding: 16,
+  mobileSortSelectorButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    minWidth: 40,
   },
-  statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginBottom: 8,
+  articlesGrid: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
-  statValue: {
-    fontSize: isMobile ? 32 : 36,
-    fontWeight: '700',
-  },
-  statLabel: {
-    fontSize: isMobile ? 13 : 14,
-    fontWeight: '500',
-  },
-  filtersContainer: {
-    marginBottom: 24,
-    position: 'relative',
-  },
-  filtersContainerMobile: {
-    marginBottom: 20,
-  },
-  filtersTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  dropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  mobileArticlesGrid: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    minHeight: 44,
-  },
-  dropdownText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  dropdownMenu: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginTop: 4,
-    maxHeight: 200,
-    zIndex: 1000,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  dropdownItemSelected: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-  },
-  dropdownItemText: {
-    fontSize: 14,
-    fontWeight: '500',
-    flex: 1,
-  },
-  dropdownItemCount: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  usersTable: {
-    borderRadius: 8,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  usersTableMobile: {
-    marginHorizontal: 0,
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: isMobile ? 16 : 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  tableHeaderMobile: {
-    padding: 16,
-  },
-  tableTitle: {
-    fontSize: isMobile ? 14 : 16,
-    fontWeight: '600',
-  },
-  tableActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    padding: 8,
-  },
-  tableContent: {
-    padding: isMobile ? 16 : 20,
   },
   emptyState: {
     alignItems: 'center',
-    padding: 40,
+    padding: 60,
   },
-  emptyStateText: {
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
     fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  articleCard: {
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 0,
+    marginBottom: 20,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderBottomColor: 'rgba(0, 0, 0, 0.15)',
+    borderRightColor: 'rgba(0, 0, 0, 0.15)',
+  },
+  articleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  articleMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  articleDate: {
+    fontSize: 12,
     fontWeight: '500',
   },
-  userCard: {
-    marginBottom: 16,
+  rankBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
   },
-  userCardMobile: {
-    marginBottom: 12,
-  },
-  userCardContent: {
-    flexDirection: 'row',
-    padding: 16,
-    alignItems: 'center',
-    gap: 16,
-  },
-  userAvatarContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userInfo: {
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  userAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-  },
-  userAvatarFallback: {
-    backgroundColor: '#3B82F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: 'white',
-    fontSize: 16,
+  rankText: {
+    fontSize: 11,
     fontWeight: '600',
   },
-  userDetails: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'left',
-  },
-  userDescription: {
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: 'left',
+  articleTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     marginBottom: 12,
+    lineHeight: 24,
   },
-  userBadges: {
+  articleStats: {
     flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'flex-start',
-    flexWrap: 'wrap',
+    gap: 32,
+    marginBottom: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    borderRadius: 12,
   },
-  userStats: {
-    alignItems: 'flex-end',
+  statItem: {
+    flexDirection: 'column',
+    alignItems: 'center',
     gap: 4,
+    flex: 1,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+  statValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  roleText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  membershipBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  membershipText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  articlesCount: {
+  statLabel: {
     fontSize: 12,
-    minWidth: 80,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    opacity: 0.7,
   },
-  joinDate: {
-    fontSize: 12,
-    minWidth: 80,
+  articleLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#DA2B1F',
+    borderRadius: 12,
+    marginTop: 8,
   },
-  lastSeen: {
-    fontSize: 12,
-    minWidth: 80,
+  linkText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });

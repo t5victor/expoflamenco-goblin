@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform } from 'react-native';
+import { DynamicColorIOS, Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -7,60 +7,76 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 export default function TabLayout() {
   if (Platform.OS === 'ios') {
     return (
-      <NativeTabs>
+      <NativeTabs
+      style={{
+        // For the text color
+        color: DynamicColorIOS({
+          dark: 'white',
+          light: 'black',
+        }),
+        // For the selected icon color
+        tintColor: DynamicColorIOS({
+          dark: '#DA2B1F',
+          light: 'black',
+        }),
+      }}>
         <NativeTabs.Trigger name="admin">
-          <Icon sf="tray.badge.fill" />
-          <Label>Inicio</Label>
+          <Icon sf="chart.bar.fill" />
+          <Label>Analytics</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="users">
-          <Icon sf="person.2.fill" />
-          <Label>Users</Label>
+          <Icon sf="doc.text.fill" />
+          <Label>Artículos</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="subscriptions">
           <Icon sf="person.text.rectangle.fill" />
-          <Label>Subscriptions</Label>
+          <Label>Perfil</Label>
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="explore">
+        <NativeTabs.Trigger name="explore" tintColor="#DA2B1F">
           <Icon sf="gearshape.fill" />
-          <Label>Settings</Label>
+          <Label>Ajustes</Label>
         </NativeTabs.Trigger>
       </NativeTabs>
     );
   }
 
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
+    <Tabs screenOptions={{
+      headerShown: false,
+      tabBarActiveTintColor: '#DA2B1F',
+      tabBarInactiveTintColor: '#6B7280',
+    }}>
       <Tabs.Screen
         name="admin"
         options={{
-          title: 'Dashboard',
+          title: 'Analytics',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={24} name="square.grid.2x2.fill" color={color} />
+            <IconSymbol size={24} name="chart.bar.fill" color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="users"
         options={{
-          title: 'Users',
+          title: 'Artículos',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={24} name="person.2.fill" color={color} />
+            <IconSymbol size={24} name="doc.text.fill" color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="subscriptions"
         options={{
-          title: 'Subscriptions',
+          title: 'Perfil',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={24} name="creditcard.fill" color={color} />
+            <IconSymbol size={24} name="person.text.rectangle.fill" color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Settings',
+          title: 'Ajustes',
           tabBarIcon: ({ color }) => (
             <IconSymbol size={24} name="gearshape.fill" color={color} />
           ),

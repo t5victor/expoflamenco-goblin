@@ -1,0 +1,86 @@
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createApiUsers, AuthSession, SiteKey } from '@/services/apiUsers';
+
+interface AuthContextType {
+  user: AuthSession | null;
+  isLoading: boolean;
+  login: (username: string, password: string, site?: SiteKey) => Promise<boolean>;
+  logout: () => Promise<void>;
+  isAuthenticated: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const AUTH_STORAGE_KEY = '@auth_session';
+const API_USERS = createApiUsers();
+
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<AuthSession | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load saved session on app start
+  useEffect(() => {
+    loadSavedSession();
+  }, []);
+
+  const loadSavedSession = async () => {
+    try {
+      const savedSession = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+      if (savedSession) {
+        const session: AuthSession = JSON.parse(savedSession);
+        setUser(session);
+      }
+    } catch (error) {
+      console.error('Error loading saved session:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      // Login always happens against the root site (expoflamenco.com)
+      const session = await API_USERS.login('root', username, password);
+
+      // Save session to storage
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+      setUser(session);
+
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const value: AuthContextType = {
+    user,
+    isLoading,
+    login,
+    logout,
+    isAuthenticated: !!user,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

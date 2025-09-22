@@ -1,35 +1,19 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAuth } from '@/hooks/useAuth';
 import React, { useState, useEffect } from 'react';
 import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageDropdown } from '@/components/LanguageDropdown';
-import { SiteSelector } from '@/components/SiteSelector';
 import { TrafficChart } from '@/components/TrafficChart';
 import { SubsChart } from '@/components/SubsChart';
 import { Feather } from '@expo/vector-icons';
-import { fetchSiteData } from '@/services/api';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { authorAnalyticsService, AuthorAnalytics } from '@/services/authorAnalytics';
 
-interface DashboardData {
-  todayVisitors: number;
-  yesterdayVisitors: number;
-  newSubscriptions: number;
-  totalSubscriptions: number;
-  monthlyRevenue: number;
-  activeMembers: number;
-  conversionRate: number;
-  avgSessionTime: string;
-  weeklyData: Array<{ day: string; visitors: number }>;
-  previousWeekData: Array<{ day: string; visitors: number }>;
-  topCountries: Array<{ name: string; flag: string; visits: number }>;
-  timePeriod?: string;
-  comparison?: {
-    visitors: { percentage: string; trend: 'up' | 'down' | 'neutral' };
-    subscriptions: { percentage: string; trend: 'up' | 'down' | 'neutral' };
-    revenue: { percentage: string; trend: 'up' | 'down' | 'neutral' };
-  };
-}
+// Using AuthorAnalytics interface from authorAnalytics service
+type DashboardData = AuthorAnalytics;
 
 const { width: screenWidth } = Dimensions.get('window');
 const isMobile = screenWidth < 768;
@@ -43,130 +27,85 @@ interface MetricCardProps {
   trendValue?: string;
   icon: keyof typeof Feather.glyphMap;
   size?: 'small' | 'medium' | 'large';
+  accentColor?: string;
 }
 
-interface SubscriptionCardProps {
+interface PostsCardProps {
   data: DashboardData;
-  periodLabels: any;
   timeFilter: string;
-  subscriptionFilter: string;
-  setSubscriptionFilter: (filter: string) => void;
-  subscriptionFilters: Array<{ id: string; label: string }>;
   t: any;
 }
 
-const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
+const PostsCard: React.FC<PostsCardProps> = ({
   data,
-  periodLabels,
   timeFilter,
-  subscriptionFilter,
-  setSubscriptionFilter,
-  subscriptionFilters,
   t
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  
-  const getFilteredValue = () => {
-    switch (subscriptionFilter) {
-      case 'free': return Math.floor(data.newSubscriptions * 0.7); // 70% free
-      case 'paid': return Math.floor(data.newSubscriptions * 0.3); // 30% paid
-      default: return data.newSubscriptions;
-    }
-  };
 
   return (
     <View style={[
       styles.metricCard,
       styles.mediumCard,
-      { 
+      {
         backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
         borderColor: isDark ? '#374151' : '#E5E7EB'
       }
     ]}>
       <View style={styles.cardHeader}>
         <View style={styles.cardTitleRow}>
-          <Feather name="user-plus" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+          <IconSymbol name="doc.text.fill" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
           <Text style={[
-            styles.cardTitle, 
+            styles.cardTitle,
             { color: isDark ? '#D1D5DB' : '#374151' }
           ]}>
-            {`${timeFilter} Subs`}
+            {`${timeFilter} Posts`}
           </Text>
         </View>
       </View>
-      
+
       <Text style={[
-        styles.cardValue, 
+        styles.cardValue,
         { color: isDark ? '#FFFFFF' : '#111827' }
       ]}>
-        {getFilteredValue().toLocaleString()}
+        {data.totalPosts.toLocaleString()}
       </Text>
-      
+
       <Text style={[
-        styles.cardSubtitle, 
+        styles.cardSubtitle,
         { color: isDark ? '#9CA3AF' : '#6B7280' }
       ]}>
-        Paid Memberships Pro
+        Total artículos publicados
       </Text>
-      
-      {data.comparison?.subscriptions && (
+
+      {data.comparison?.posts && (
         <View style={[
-          styles.trendBadge, 
-          { 
-            backgroundColor: data.comparison.subscriptions.trend === 'up' ? '#10B981' : 
-                           data.comparison.subscriptions.trend === 'down' ? '#EF4444' : '#6B7280'
+          styles.trendBadge,
+          {
+            backgroundColor: data.comparison.posts.trend === 'up' ? '#10B981' :
+                           data.comparison.posts.trend === 'down' ? '#EF4444' : '#6B7280'
           }
         ]}>
           <Text style={[styles.trendText, { color: '#FFFFFF' }]}>
-            {data.comparison.subscriptions.trend === 'up' ? '↗' : 
-             data.comparison.subscriptions.trend === 'down' ? '↘' : '→'} {data.comparison.subscriptions.percentage}
+            {data.comparison.posts.trend === 'up' ? '↗' :
+             data.comparison.posts.trend === 'down' ? '↘' : '→'} {data.comparison.posts.percentage}
           </Text>
         </View>
       )}
-      
-      {/* Subscription Filter Dropdown */}
-      <View style={[styles.subscriptionFilterContainer, { marginTop: 8 }]}>
-        {subscriptionFilters.map((filter) => (
-          <TouchableOpacity
-            key={filter.id}
-            style={[
-              styles.subscriptionFilterButton,
-              {
-                backgroundColor: subscriptionFilter === filter.id 
-                  ? (isDark ? '#10B981' : '#059669')
-                  : (isDark ? '#374151' : '#F3F4F6'),
-              },
-            ]}
-            onPress={() => setSubscriptionFilter(filter.id)}
-          >
-            <Text
-              style={[
-                styles.subscriptionFilterText,
-                {
-                  color: subscriptionFilter === filter.id 
-                    ? '#FFFFFF'
-                    : (isDark ? '#9CA3AF' : '#6B7280'),
-                },
-              ]}
-            >
-              {filter.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
     </View>
   );
 };
 
-const MetricCard: React.FC<MetricCardProps> = ({ 
-  title, 
-  value, 
-  subtitle, 
-  trend, 
-  trendValue, 
+const MetricCard: React.FC<MetricCardProps> = ({
+  title,
+  value,
+  subtitle,
+  trend,
+  trendValue,
   icon,
-  size = 'medium'
+  size = 'medium',
+  accentColor = '#6B7280'
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -181,16 +120,22 @@ const MetricCard: React.FC<MetricCardProps> = ({
     <View style={[
       styles.metricCard,
       styles[`${size}Card`],
-      { 
+      {
         backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-        borderColor: isDark ? '#374151' : '#E5E7EB'
+        borderColor: accentColor + '20',
+        shadowColor: accentColor,
       }
     ]}>
       <View style={styles.cardHeader}>
         <View style={styles.cardTitleRow}>
-          <Feather name={icon} size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+          <View style={[
+            styles.iconContainer,
+            { backgroundColor: accentColor + '15' }
+          ]}>
+            <IconSymbol name={icon} size={18} color={accentColor} />
+          </View>
           <Text style={[
-            styles.cardTitle, 
+            styles.cardTitle,
             { color: isDark ? '#D1D5DB' : '#374151' }
           ]}>
             {title}
@@ -261,37 +206,43 @@ const getTimePeriodLabels = (timePeriod: string, t: any) => {
   return labels[timePeriod as keyof typeof labels] || labels['30d'];
 };
 
-export default function AdminDashboard() {
+export default function AuthorDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [timeFilter, setTimeFilter] = useState('30d');
-  const [selectedSite, setSelectedSite] = useState('com');
-  const [subscriptionFilter, setSubscriptionFilter] = useState('all');
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
   const { t } = useTranslation();
+  const { user, logout } = useAuth();
   const isDark = colorScheme === 'dark';
   const isDesktop = screenWidth >= 768;
-  const periodLabels = getTimePeriodLabels(timeFilter, t);
 
   useEffect(() => {
-    loadSiteData();
-  }, [selectedSite, timeFilter]); 
+    if (user) {
+      loadAuthorData();
+    }
+  }, [user, timeFilter]);
 
-  const loadSiteData = async () => {
+  const loadAuthorData = async () => {
+    if (!user) return;
+
     try {
       setLoading(true);
-      console.log('🚀 Fetching data for site:', selectedSite);
-      const siteData = await fetchSiteData(selectedSite, timeFilter);
-      console.log('✅ API Response:', siteData);
-      setData(siteData);
+      console.log('🚀 Fetching analytics for author:', user.userId);
+      const authorData = await authorAnalyticsService.getAuthorAnalytics(
+        user.userId,
+        timeFilter,
+        user.token
+      );
+      console.log('✅ Author analytics loaded:', authorData);
+      setData(authorData);
     } catch (error) {
-      console.error('❌ API Error:', error);
+      console.error('❌ Author analytics error:', error);
       console.error('Error details:', {
         message: (error as Error).message,
         stack: (error as Error).stack,
-        site: selectedSite
+        userId: user.userId
       });
       // Set data to null on error - will show ERROR in UI
       setData(null);
@@ -302,9 +253,9 @@ export default function AdminDashboard() {
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    await loadSiteData();
+    await loadAuthorData();
     setRefreshing(false);
-  }, [selectedSite]);
+  }, [user, timeFilter]);
 
   const timeFilters = [
     { id: '24h', label: '24h' },
@@ -369,47 +320,48 @@ export default function AdminDashboard() {
             <View style={[styles.header, isMobile && styles.mobileHeader]}>
               <View style={styles.headerLeft}>
                 <Text style={[
-                  styles.headerTitle, 
+                  styles.headerTitle,
                   { color: isDark ? '#FFFFFF' : '#111827' }
                 ]}>
-                  {t('dashboard.title')}
+                  {user?.name || 'Analytics Dashboard'}
                 </Text>
                 <Text style={[
-                  styles.headerSubtitle, 
+                  styles.headerSubtitle,
                   { color: isDark ? '#9CA3AF' : '#6B7280' }
                 ]}>
-                  {t('dashboard.subtitle')}
+                  Tus métricas de rendimiento en Expoflamenco Revista
                 </Text>
-                <View style={styles.siteSection}>
-                  <SiteSelector selectedSite={selectedSite} onSiteChange={setSelectedSite} />
-                </View>
               </View>
-              
+
               <View style={[styles.headerActions, isMobile && styles.mobileHeaderActions]}>
-                <View style={[styles.filterRow, isMobile && styles.mobileFilterRow]}>
-                  {timeFilters.map((filter) => (
-                    <TouchableOpacity
-                      key={filter.id}
-                      style={[
-                        styles.filterButton,
-                        isMobile && styles.mobileFilterButton,
-                        { 
-                          backgroundColor: timeFilter === filter.id 
-                            ? '#3B82F6' 
-                            : 'transparent',
-                          borderColor: timeFilter === filter.id 
-                            ? '#3B82F6' 
-                            : (isDark ? '#374151' : '#D1D5DB')
-                        }
-                      ]}
-                      onPress={() => setTimeFilter(filter.id)}
-                    >
+              <View style={[
+                styles.timeSelectorContainer,
+                isMobile && styles.mobileTimeSelectorContainer,
+                { backgroundColor: isDark ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.8)' }
+              ]}>
+                {timeFilters.map((filter, index) => (
+                  <TouchableOpacity
+                    key={filter.id}
+                    style={[
+                      styles.timeSelectorButton,
+                      isMobile && styles.mobileTimeSelectorButton,
+                      index === 0 && styles.timeSelectorButtonFirst,
+                      index === timeFilters.length - 1 && styles.timeSelectorButtonLast,
+                      timeFilter === filter.id && styles.timeSelectorButtonActive,
+                      timeFilter === filter.id && {
+                        backgroundColor: '#DA2B1F',
+                        shadowColor: '#DA2B1F',
+                      }
+                    ]}
+                    onPress={() => setTimeFilter(filter.id)}
+                  >
                       <Text style={[
-                        styles.filterText,
-                        { 
-                          color: timeFilter === filter.id 
+                        styles.timeSelectorText,
+                        timeFilter === filter.id && styles.timeSelectorTextActive,
+                        {
+                          color: timeFilter === filter.id
                             ? '#FFFFFF'
-                            : (isDark ? '#9CA3AF' : '#6B7280')
+                            : (isDark ? '#D1D5DB' : '#374151')
                         }
                       ]}>
                         {filter.label}
@@ -417,21 +369,24 @@ export default function AdminDashboard() {
                     </TouchableOpacity>
                   ))}
                 </View>
-                
+
                 <View style={[styles.rightActions, isMobile && styles.mobileRightActions]}>
                   {!isMobile && <LanguageDropdown />}
-                  
+
                   {!isMobile && (
-                    <TouchableOpacity style={[
-                      styles.actionButton,
-                      { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }
-                    ]}>
-                      <Feather name="download" size={16} color={isDark ? '#FFFFFF' : '#374151'} />
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }
+                      ]}
+                      onPress={logout}
+                    >
+                      <IconSymbol name="arrow.right.square" size={16} color={isDark ? '#FFFFFF' : '#374151'} />
                       <Text style={[
                         styles.actionButtonText,
                         { color: isDark ? '#FFFFFF' : '#374151' }
                       ]}>
-                        {t('export')}
+                        Salir
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -444,91 +399,126 @@ export default function AdminDashboard() {
               {/* Key Metrics Row */}
               <View style={[styles.metricsRow, isMobile && styles.mobileMetricsRow]}>
                 <MetricCard
-                  title={periodLabels.visitors}
-                  value={data.todayVisitors}
-                  subtitle={`Site traffic (${timeFilter})`}
-                  trend={data.comparison?.visitors.trend || 'neutral'}
-                  trendValue={data.comparison?.visitors.percentage || '0%'}
+                  title="Total Views"
+                  value={data.totalViews.toLocaleString()}
+                  subtitle={`Vistas totales (${timeFilter})`}
+                  trend={data.comparison?.views.trend || 'neutral'}
+                  trendValue={data.comparison?.views.percentage || '0%'}
                   icon="eye"
                   size="medium"
+                  accentColor="#DA2B1F"
                 />
-                
-                <SubscriptionCard
+
+                <PostsCard
                   data={data}
-                  periodLabels={periodLabels}
                   timeFilter={timeFilter}
-                  subscriptionFilter={subscriptionFilter}
-                  setSubscriptionFilter={setSubscriptionFilter}
-                  subscriptionFilters={subscriptionFilters}
                   t={t}
                 />
-                
+
                 <MetricCard
-                  title={periodLabels.revenue}
-                  value={`€${(data.monthlyRevenue / 1000).toFixed(1)}k`}
-                  subtitle={`Revenue (${timeFilter})`}
-                  trend={data.comparison?.revenue.trend || 'neutral'}
-                  trendValue={data.comparison?.revenue.percentage || '0%'}
-                  icon="dollar-sign"
+                  title="Avg Views/Post"
+                  value={data.avgViewsPerPost.toFixed(1)}
+                  subtitle="Promedio de vistas por artículo"
+                  trend={data.comparison?.engagement.trend || 'neutral'}
+                  trendValue={data.comparison?.engagement.percentage || '0%'}
+                  icon="arrow.up"
                   size="medium"
+                  accentColor="#10B981"
                 />
-                
+
                 <MetricCard
-                  title="Conversion"
-                  value={`${data.conversionRate}%`}
-                  subtitle="Visitor to subscriber"
-                  trend="down"
-                  trendValue="-2.1%"
-                  icon="trending-up"
+                  title="Top Post Views"
+                  value={data.topPosts.length > 0 ? data.topPosts[0].views.toLocaleString() : '0'}
+                  subtitle="Mejor artículo"
+                  trend="up"
+                  trendValue="N/A"
+                  icon="star"
                   size="medium"
+                  accentColor="#F59E0B"
                 />
               </View>
 
               {/* Chart and Secondary Metrics */}
               <View style={[styles.contentRow, isMobile && styles.mobileContentRow]}>
                 <View style={[styles.leftColumn, isMobile && styles.mobileLeftColumn]}>
-                  <TrafficChart 
-                    weeklyData={data.weeklyData} 
+                  <TrafficChart
+                    weeklyData={data.topPosts.slice(0, 7).map((post, index) => ({
+                      day: post.post.title.rendered.substring(0, 10) + '...',
+                      visitors: post.views
+                    }))}
                     timePeriod={timeFilter}
-                    siteId={selectedSite}
+                    siteId="revista"
                   />
-                  
-                  <SubsChart 
-                    subsData={data.weeklyData.map(item => ({ 
-                      day: item.day, 
-                      subscriptions: Math.floor(item.visitors * 0.02) 
-                    }))} 
-                    timePeriod={timeFilter}
-                    siteId={selectedSite}
-                  />
-                  
+
+                  {/* Top Posts List */}
+                  <View style={[
+                    styles.chartCard,
+                    { backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF' }
+                  ]}>
+                    <Text style={[
+                      styles.chartTitle,
+                      { color: isDark ? '#FFFFFF' : '#111827' }
+                    ]}>
+                      Artículos Más Vistos
+                    </Text>
+                    {data.topPosts.slice(0, 5).map((post, index) => (
+                      <View key={post.post.id} style={styles.postItem}>
+                        <View style={styles.postInfo}>
+                          <Text style={[
+                            styles.postTitle,
+                            { color: isDark ? '#D1D5DB' : '#374151' }
+                          ]} numberOfLines={1}>
+                            {post.post.title.rendered}
+                          </Text>
+                          <Text style={[
+                            styles.postViews,
+                            { color: isDark ? '#9CA3AF' : '#6B7280' }
+                          ]}>
+                            {post.views.toLocaleString()} vistas
+                          </Text>
+                        </View>
+                        <View style={[
+                          styles.postRank,
+                          { backgroundColor: isDark ? '#374151' : '#F3F4F6' }
+                        ]}>
+                          <Text style={[
+                            styles.postRankText,
+                            { color: isDark ? '#FFFFFF' : '#374151' }
+                          ]}>
+                            #{index + 1}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+
                 </View>
                 
                 <View style={[styles.rightColumn, isMobile && styles.mobileRightColumn]}>
                   <View style={styles.rightMetrics}>
                     <MetricCard
-                      title="Bounce Rate"
-                      value="24.3%"
-                      subtitle="Session engagement"
-                      trend="down"
-                      trendValue="-2.1%"
-                      icon="activity"
+                      title="Artículos Recientes"
+                      value={data.recentPosts.length.toString()}
+                      subtitle="Publicados recientemente"
+                      trend="neutral"
+                      trendValue="N/A"
+                      icon="clock"
                       size="small"
                     />
                     <MetricCard
-                      title="Page Views"
-                      value="89.2k"
-                      subtitle="Monthly page views"
+                      title="Mejor Posición"
+                      value={data.topPosts.length > 0 ? "1" : "N/A"}
+                      subtitle="Ranking de artículos"
                       trend="up"
-                      trendValue="+12.5%"
-                      icon="file-text"
+                      trendValue="Top"
+                      icon="award"
                       size="small"
                     />
                   </View>
-                  
+
                   <View style={[
                     styles.topCountriesCard,
-                    { 
+                    {
                       backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
                       borderColor: isDark ? '#374151' : '#E5E7EB'
                     }
@@ -537,32 +527,31 @@ export default function AdminDashboard() {
                       styles.sideCardTitle,
                       { color: isDark ? '#FFFFFF' : '#111827' }
                     ]}>
-                      Top Countries
+                      Artículos Recientes
                     </Text>
-                    {data.topCountries.map((country: any, index: number) => (
-                      <View key={index} style={styles.countryRow}>
-                        <View style={styles.countryLeft}>
-                          <Text style={styles.countryFlag}>{country.flag}</Text>
+                    {data.recentPosts.slice(0, 5).map((post, index) => (
+                      <View key={post.id} style={styles.postItem}>
+                        <View style={styles.postInfo}>
                           <Text style={[
-                            styles.countryName,
+                            styles.postTitle,
                             { color: isDark ? '#D1D5DB' : '#374151' }
+                          ]} numberOfLines={2}>
+                            {post.title.rendered}
+                          </Text>
+                          <Text style={[
+                            styles.postViews,
+                            { color: isDark ? '#9CA3AF' : '#6B7280' }
                           ]}>
-                            {country.name}
+                            {new Date(post.date).toLocaleDateString('es-ES')}
                           </Text>
                         </View>
-                        <Text style={[
-                          styles.countryVisits,
-                          { color: isDark ? '#9CA3AF' : '#6B7280' }
-                        ]}>
-                          {country.visits.toLocaleString()}
-                        </Text>
                       </View>
                     ))}
                   </View>
-                  
+
                   <View style={[
                     styles.alertsCard,
-                    { 
+                    {
                       backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
                       borderColor: isDark ? '#374151' : '#E5E7EB'
                     }
@@ -571,7 +560,7 @@ export default function AdminDashboard() {
                       styles.sideCardTitle,
                       { color: isDark ? '#FFFFFF' : '#111827' }
                     ]}>
-                      Recent Activity
+                      Estadísticas del Autor
                     </Text>
                     <View style={styles.activityItem}>
                       <View style={[styles.activityDot, { backgroundColor: '#10B981' }]} />
@@ -579,7 +568,16 @@ export default function AdminDashboard() {
                         styles.activityText,
                         { color: isDark ? '#D1D5DB' : '#374151' }
                       ]}>
-                        12 new subscribers in last hour
+                        {data.totalPosts} artículos publicados
+                      </Text>
+                    </View>
+                    <View style={styles.activityItem}>
+                      <View style={[styles.activityDot, { backgroundColor: '#DA2B1F' }]} />
+                      <Text style={[
+                        styles.activityText,
+                        { color: isDark ? '#D1D5DB' : '#374151' }
+                      ]}>
+                        {data.totalViews.toLocaleString()} vistas totales
                       </Text>
                     </View>
                     <View style={styles.activityItem}>
@@ -588,16 +586,7 @@ export default function AdminDashboard() {
                         styles.activityText,
                         { color: isDark ? '#D1D5DB' : '#374151' }
                       ]}>
-                        High traffic on /courses page
-                      </Text>
-                    </View>
-                    <View style={styles.activityItem}>
-                      <View style={[styles.activityDot, { backgroundColor: '#3B82F6' }]} />
-                      <Text style={[
-                        styles.activityText,
-                        { color: isDark ? '#D1D5DB' : '#374151' }
-                      ]}>
-                        Email campaign opened by 234 users
+                        {data.avgViewsPerPost.toFixed(1)} vistas promedio por artículo
                       </Text>
                     </View>
                   </View>
@@ -656,19 +645,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  filterRow: {
+  timeSelectorContainer: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 25,
+    padding: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    backdropFilter: 'blur(10px)',
     borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  filterText: {
-    fontSize: 12,
-    fontWeight: '500',
+  timeSelectorButton: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 50,
+  },
+  timeSelectorButtonFirst: {
+    marginLeft: 0,
+  },
+  timeSelectorButtonLast: {
+    marginRight: 0,
+  },
+  timeSelectorButtonActive: {
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  timeSelectorText: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  timeSelectorTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   actionButton: {
     flexDirection: 'row',
@@ -709,9 +733,13 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   metricCard: {
-    padding: 20,
-    borderRadius: 18,
+    padding: 24,
+    borderRadius: 20,
     borderWidth: 0,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderBottomColor: 'rgba(0, 0, 0, 0.15)',
+    borderRightColor: 'rgba(0, 0, 0, 0.15)',
   },
   mediumCard: {
     flex: 1,
@@ -728,7 +756,14 @@ const styles = StyleSheet.create({
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+  },
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cardTitle: {
     fontSize: 13,
@@ -760,10 +795,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   chartCard: {
-    padding: 24,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 16,
+    padding: 28,
+    borderRadius: 16,
+    borderWidth: 0,
+    marginBottom: 20,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderBottomColor: 'rgba(0, 0, 0, 0.15)',
+    borderRightColor: 'rgba(0, 0, 0, 0.15)',
   },
   chartHeader: {
     flexDirection: 'row',
@@ -860,6 +899,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     flex: 1,
   },
+  postItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  postInfo: {
+    flex: 1,
+  },
+  postTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  postViews: {
+    fontSize: 12,
+  },
+  postRank: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  postRankText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -916,6 +983,14 @@ const styles = StyleSheet.create({
   mobileRightActions: {
     flexDirection: 'row',
     justifyContent: 'center',
+  },
+  mobileTimeSelectorContainer: {
+    marginHorizontal: 16,
+  },
+  mobileTimeSelectorButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minWidth: 40,
   },
   mobileDashboardGrid: {
     paddingHorizontal: 16,
