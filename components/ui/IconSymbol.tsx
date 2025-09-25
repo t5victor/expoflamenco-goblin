@@ -25,6 +25,13 @@ const MAPPING = {
   'gearshape.fill': 'settings',
   'bookmark.fill': 'bookmark',
   'creditcard.fill': 'credit-card',
+  // Dashboard metric icons
+  'doc.text.fill': 'description',
+  'arrow.up': 'arrow-upward',
+  'star.fill': 'star',
+  'eye': 'visibility',
+  'eye.fill': 'visibility',
+  'trending.up': 'trending-up',
 } as IconMapping;
 
 /**

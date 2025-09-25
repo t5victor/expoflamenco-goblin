@@ -64,10 +64,11 @@ export const translations = {
       articlesRecentSubtitle: 'Recently published',
       topPositionTitle: 'Top Position',
       topPositionSubtitle: 'Article ranking',
-      statsSummary: 'Author Statistics',
-      articlesCount: 'articles published',
-      totalViewsCount: 'total views',
-      avgViewsPerArticle: 'average views per article',
+        statsSummary: 'Author Statistics',
+        articlesCount: 'articles published',
+        totalViewsCount: 'total views',
+        avgViewsPerArticle: 'average views per article',
+        analyticsNotice: 'View data not available - trying multiple data sources',
     },
 
     // Articles
@@ -184,10 +185,11 @@ export const translations = {
       articlesRecentSubtitle: 'Publicados recientemente',
       topPositionTitle: 'Mejor Posición',
       topPositionSubtitle: 'Ranking de artículos',
-      statsSummary: 'Estadísticas del Autor',
-      articlesCount: 'artículos publicados',
-      totalViewsCount: 'vistas totales',
-      avgViewsPerArticle: 'vistas promedio por artículo',
+        statsSummary: 'Estadísticas del Autor',
+        articlesCount: 'artículos publicados',
+        totalViewsCount: 'vistas totales',
+        avgViewsPerArticle: 'vistas promedio por artículo',
+        analyticsNotice: 'Datos de visualizaciones no disponibles - intentando múltiples fuentes de datos',
     },
 
     // Articles

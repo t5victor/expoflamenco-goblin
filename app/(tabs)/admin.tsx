@@ -53,7 +53,12 @@ const PostsCard: React.FC<PostsCardProps> = ({
     ]}>
       <View style={styles.cardHeader}>
         <View style={styles.cardTitleRow}>
-          <IconSymbol name="doc" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+          <View style={[
+            styles.iconContainer,
+            { backgroundColor: '#8B5CF6' + '15' }
+          ]}>
+            <IconSymbol name="doc.text.fill" size={18} color="#8B5CF6" />
+          </View>
           <Text style={[
             styles.cardTitle,
             { color: isDark ? '#D1D5DB' : '#374151' }
@@ -67,7 +72,7 @@ const PostsCard: React.FC<PostsCardProps> = ({
         styles.cardValue,
         { color: isDark ? '#FFFFFF' : '#111827' }
       ]}>
-        {data.totalPosts.toLocaleString()}
+        {data.recentPosts.length.toString()}
       </Text>
 
       <Text style={[
@@ -222,26 +227,55 @@ export default function AuthorDashboard() {
     }
   }, [user, timeFilter]);
 
+  const getDateRangeFromTimeFilter = (timeFilter: string) => {
+    const now = new Date();
+    const endDate = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    switch (timeFilter) {
+      case '24h':
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        return {
+          from: yesterday.toISOString().split('T')[0],
+          to: endDate
+        };
+      case '7d':
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return {
+          from: weekAgo.toISOString().split('T')[0],
+          to: endDate
+        };
+      case '30d':
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        return {
+          from: monthAgo.toISOString().split('T')[0],
+          to: endDate
+        };
+      case '90d':
+        const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        return {
+          from: quarterAgo.toISOString().split('T')[0],
+          to: endDate
+        };
+      default:
+        return undefined;
+    }
+  };
+
   const loadAuthorData = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
-      console.log('🚀 Fetching analytics for author:', user.userId);
+      const dateRange = getDateRangeFromTimeFilter(timeFilter);
       const authorData = await authorAnalyticsService.getAuthorAnalytics(
         user.userId,
         timeFilter,
-        user.token
+        user.token,
+        dateRange
       );
-      console.log('✅ Author analytics loaded:', authorData);
       setData(authorData);
     } catch (error) {
-      console.error('❌ Author analytics error:', error);
-      console.error('Error details:', {
-        message: (error as Error).message,
-        stack: (error as Error).stack,
-        userId: user.userId
-      });
+      console.error('Author analytics error:', (error as Error).message);
       // Set data to null on error - will show ERROR in UI
       setData(null);
     } finally {
@@ -329,6 +363,14 @@ export default function AuthorDashboard() {
                 ]}>
                   {t('dashboard.subtitle')}
                 </Text>
+                {data.totalViews === 0 && data.totalPosts > 0 && (
+                  <Text style={[
+                    styles.analyticsNotice,
+                    { color: isDark ? '#F59E0B' : '#D97706' }
+                  ]}>
+                    {t('dashboard.analyticsNotice')}
+                  </Text>
+                )}
               </View>
 
               <View style={[styles.headerActions, isMobile && styles.mobileHeaderActions]}>
@@ -397,14 +439,14 @@ export default function AuthorDashboard() {
               {/* Key Metrics Row */}
               <View style={[styles.metricsRow, isMobile && styles.mobileMetricsRow]}>
                 <MetricCard
-                  title={t('dashboard.totalViews')}
-                  value={data.totalViews.toLocaleString()}
-                  subtitle={`${t('dashboard.viewsTotal')} (${t(`timePeriods.${timeFilter}`)})`}
-                  trend={data.comparison?.views.trend || 'neutral'}
-                  trendValue={data.comparison?.views.percentage || '0%'}
-                  icon="eye"
+                  title={t('dashboard.postsCount')}
+                  value={data.totalPosts.toString()}
+                  subtitle={`${t('dashboard.postsTotal')} (${t(`timePeriods.${timeFilter}`)})`}
+                  trend={data.comparison?.posts.trend || 'neutral'}
+                  trendValue={data.comparison?.posts.percentage || '0%'}
+                  icon="doc.text.fill"
                   size="medium"
-                  accentColor="#DA2B1F"
+                  accentColor="#3B82F6"
                 />
 
                 <PostsCard
@@ -419,7 +461,7 @@ export default function AuthorDashboard() {
                   subtitle={t('dashboard.avgViewsDesc')}
                   trend={data.comparison?.engagement.trend || 'neutral'}
                   trendValue={data.comparison?.engagement.percentage || '0%'}
-                  icon="arrow.up.circle"
+                  icon="trending.up"
                   size="medium"
                   accentColor="#10B981"
                 />
@@ -430,9 +472,9 @@ export default function AuthorDashboard() {
                   subtitle={t('dashboard.topPostDesc')}
                   trend="up"
                   trendValue="N/A"
-                  icon="star"
+                  icon="star.fill"
                   size="medium"
-                  accentColor="#F59E0B"
+                  accentColor="#D97706"
                 />
               </View>
 
@@ -621,6 +663,11 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
   },
+  analyticsNotice: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
   siteSection: {
     marginTop: 16,
   },
@@ -756,7 +803,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },

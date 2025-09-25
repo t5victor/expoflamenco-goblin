@@ -97,22 +97,29 @@ export class AuthorAnalyticsService {
     dateRange?: DateRange
   ): Promise<AuthorAnalytics> {
     try {
-      console.log(`🔍 Fetching analytics for author ${userId} on revista...`);
-
       // Get user stats summary from revista
       const userStats = await this.apiUsers.getUserStatsSummary(
         'revista',
         userId,
         dateRange,
-        { limitTop: 10 }
+        { limitTop: 10, token }
       );
 
-      // Get recent posts
-      const recentPosts = await this.apiUsers.fetchPostsByAuthor(
+      // Get recent posts (filtered by date range if provided)
+      const allPosts = await this.apiUsers.fetchPostsByAuthor(
         'revista',
         userId,
-        { perPage: 20, page: 1 }
+        { perPage: 100 }
       );
+
+      const recentPosts = dateRange
+        ? allPosts.filter(post => {
+            const postDate = new Date(post.date);
+            const fromDate = dateRange.from ? new Date(dateRange.from + 'T00:00:00') : null;
+            const toDate = dateRange.to ? new Date(dateRange.to + 'T23:59:59') : null;
+            return (!fromDate || postDate >= fromDate) && (!toDate || postDate <= toDate);
+          })
+        : allPosts;
 
       // Calculate engagement score (views per post as percentage of author's average)
       const avgViewsPerPost = userStats.postsCount > 0 ? userStats.totalViews / userStats.postsCount : 0;
@@ -152,18 +159,9 @@ export class AuthorAnalyticsService {
         dateRange
       };
 
-      console.log(`✅ Analytics loaded for author ${userId}:`, {
-        totalViews: analytics.totalViews,
-        totalPosts: analytics.totalPosts,
-        avgViews: analytics.avgViewsPerPost.toFixed(1),
-        topPostsCount: analytics.topPosts.length
-      });
-
       return analytics;
 
     } catch (error: any) {
-      console.error(`🚨 Author analytics error for user ${userId}:`, error?.message || error);
-
       // Return error state
       return {
         userId,
@@ -198,7 +196,7 @@ export class AuthorAnalyticsService {
     dateRange?: DateRange;
   }> {
     try {
-      const views = await this.apiUsers.fetchViewsForPost('revista', postId, dateRange);
+      const views = await this.apiUsers.fetchViewsForPost('revista', postId, dateRange, token);
 
       return {
         postId,
