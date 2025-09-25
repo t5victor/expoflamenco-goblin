@@ -151,7 +151,7 @@ export const translations = {
       diagnosticButton: 'Diagnosticar Servidor',
       authError: 'Error de Autenticación',
       loginError: 'Error de Inicio de Sesión',
-      credentialsError: 'Credenciales incorrectas',
+      credentialsError: 'La contraseña o el usuario son incorrectos',
       serverError: 'Error del servidor. Inténtalo de nuevo.',
       jwtError: 'Plugin JWT no encontrado. Instala "JWT Authentication for WP REST API".',
       networkError: 'Error de red. Verifica tu conexión.',
@@ -240,114 +240,6 @@ export const translations = {
       subtitle: 'Configure your preferences',
       logout: 'Logout',
       logoutConfirm: 'Are you sure you want to logout?',
-    },
-
-  },
-
-  es: {
-    // Common
-    loading: 'Cargando...',
-    error: 'Error',
-    save: 'Guardar',
-    cancel: 'Cancelar',
-    delete: 'Eliminar',
-    edit: 'Editar',
-    add: 'Agregar',
-    search: 'Buscar',
-    filter: 'Filtrar',
-    export: 'Exportar',
-    refresh: 'Actualizar',
-    settings: 'Configuración',
-    back: 'Atrás',
-    next: 'Siguiente',
-    previous: 'Anterior',
-    logout: 'Cerrar Sesión',
-
-    // Languages
-    languages: {
-      english: 'English',
-      spanish: 'Español',
-      selectLanguage: 'Seleccionar Idioma',
-      languageSettings: 'Configuración de Idioma',
-    },
-
-    // Auth
-    auth: {
-      loginTitle: 'Expoflamenco Analytics',
-      loginSubtitle: 'Accede a tus estadísticas personales de rendimiento',
-      username: 'Usuario',
-      password: 'Contraseña',
-      loginButton: 'Iniciar Sesión',
-      loginError: 'Error de inicio de sesión',
-      serverError: 'Error del servidor. Inténtalo de nuevo.',
-      jwtError: 'Plugin JWT no encontrado. Instala "JWT Authentication for WP REST API".',
-      networkError: 'Error de red. Verifica tu conexión.',
-    },
-
-    // Navigation
-    nav: {
-      analytics: 'Analíticas',
-      articles: 'Artículos',
-      profile: 'Perfil',
-      settings: 'Ajustes',
-    },
-
-    // Dashboard
-    dashboard: {
-      title: 'Panel de Analytics',
-      subtitle: 'Tus métricas de rendimiento en Expoflamenco Revista',
-      welcome: 'Bienvenido',
-      totalViews: 'Vistas Totales',
-      viewsTotal: 'Vistas totales',
-      postsCount: 'Artículos',
-      postsTotal: 'Total de artículos publicados',
-      postsTotalDesc: 'Total artículos publicados',
-      avgViewsPerPost: 'Promedio por Artículo',
-      avgViewsDesc: 'Promedio de vistas por artículo',
-      topPostViews: 'Mejor Artículo',
-      topPostDesc: 'Tu artículo más visto',
-    },
-
-    // Articles
-    articles: {
-      title: 'Mis Artículos',
-      subtitle: 'Gestiona y analiza el rendimiento de tus artículos',
-      noArticles: 'No se encontraron artículos',
-      noArticlesDesc: 'No tienes artículos publicados aún',
-      sortBy: 'Ordenar por',
-      mostViewed: 'Más Vistos',
-      mostRecent: 'Más Recientes',
-      bestEngagement: 'Mejor Interacción',
-      views: 'vistas',
-      published: 'Publicado',
-      readMore: 'Leer más',
-      articleStats: 'Estadísticas del Artículo',
-    },
-
-    // Time Periods
-    timePeriods: {
-      '24h': '24h',
-      '7d': '7d',
-      '30d': '30d',
-      '90d': '90d',
-    },
-
-    // Trends
-    trends: {
-      up: '↗',
-      down: '↘',
-      neutral: '→',
-      increased: 'incrementado',
-      decreased: 'decrementado',
-      unchanged: 'sin cambios',
-    },
-
-    // Settings
-    settings: {
-      title: 'Configuración',
-      subtitle: 'Configura tus preferencias',
-      logout: 'Cerrar Sesión',
-      logoutConfirm: '¿Estás seguro de que quieres cerrar sesión?',
     },
 
   },
