@@ -4,7 +4,7 @@
     "slug": "expo-goblin",
     "version": "1.0.8",
     "orientation": "portrait",
-    "icon": "./assets/images/LogoAppIOS.png",
+    "icon": "./assets/icons/LogoAppIOS.png",
     "scheme": "expogoblin",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,6 +14,11 @@
       "companyName": "Expoflamenco",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "icon": {
+        "light": "./assets/icons/LogoAppIOS.png",
+        "dark": "./assets/icons/LogoAppIOS.png",
+        "tinted": "./assets/icons/LogoAppIOS.png"
       }
     },
     "android": {
