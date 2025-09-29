@@ -1,270 +1,163 @@
-import React, { useState } from 'react';
+import React from "react";
 import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
-  Alert,
-  SafeAreaView,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Animated,
-  Linking,
-} from 'react-native';
-import { useAuth } from '@/hooks/useAuth';
-import { useTranslation } from '@/hooks/useTranslation';
+  ScrollView,
+  Dimensions,
+} from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { IconSymbol } from '@/components/ui/IconSymbol';
 
+const { height } = Dimensions.get("window");
+const HEADER_HEIGHT = Math.round(height * 0.40);
+
 export default function LoginScreen() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPasswordField, setShowPasswordField] = useState(false);
-  const [isWaiting, setIsWaiting] = useState(false);
-  const passwordFieldAnimation = useState(new Animated.Value(0))[0];
-  const { login } = useAuth();
-  const { t } = useTranslation();
-
-  const handleArrowPress = async () => {
-    if (!username.trim()) return;
-
-    if (!showPasswordField) {
-      // First arrow press - show password field after delay
-      setIsWaiting(true);
-      setTimeout(() => {
-        setIsWaiting(false);
-        setShowPasswordField(true);
-        Animated.timing(passwordFieldAnimation, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
-      }, 1500);
-    } else {
-      // Second arrow press - login
-      if (!password.trim()) return;
-      handleLogin();
-    }
-  };
-
-  const handleForgotPassword = async () => {
-    try {
-      await Linking.openURL('https://expoflamenco.com/membresias/login/?action=reset_pass');
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo abrir el enlace de recuperación de contraseña');
-    }
-  };
-
-  const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      Alert.alert(t('auth.authError'), t('auth.credentialsError'));
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const success = await login(username.trim(), password.trim());
-      if (!success) {
-        Alert.alert(t('auth.loginError'), t('auth.credentialsError'));
-      }
-    } catch (error) {
-      console.error('Login error details:', error);
-
-      let errorMessage = t('auth.serverError');
-      if (error.message.includes('rest_no_route')) {
-        errorMessage = t('auth.jwtError');
-      } else if (error.message.includes('404')) {
-        errorMessage = t('auth.networkError');
-      } else if (error.message.includes('401') || error.message.includes('403')) {
-        errorMessage = t('auth.credentialsError');
-      }
-
-      Alert.alert(t('auth.authError'), errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidingView}
-      >
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <IconSymbol name="sharedwithyou" size={96} color="#DA2B1F" style={styles.icon} />
-            <Text style={styles.title}>
-              Expo Stats
-            </Text>
-          </View>
+    <View style={styles.container}>
+      {/* Header ola */}
+      <View style={styles.header}>
+  <Svg width="100%" height="100%" viewBox="0 0 393 220" preserveAspectRatio="none">
+    <Path
+      d="
+        M0 0
+        H393
+        V148
+        C 330 220, 250 211, 180 184
+        C 120 166, 60 157, 0 171
+        Z
+      "
+      fill="#DA2B1F"
+    />
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                value={username}
-                onChangeText={setUsername}
-                placeholder="Correo o número de teléfono"
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="none"
-               autoCorrect={false}
-                editable={!isWaiting}
-              />
-              {!showPasswordField && (
-                <TouchableOpacity
-                  style={[styles.arrowButton, !username.trim() && styles.arrowButtonDisabled]}
-                  onPress={handleArrowPress}
-                  disabled={isLoading || isWaiting || !username.trim()}
-                >
-                  {isWaiting ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                  ) : (
-                    <Text style={styles.arrowText}>→</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-            </View>
+    {/* Líneas internas tipo topografía */}
+    <Path
+      d="M0 40 C100 60, 200 30, 393 50"
+      stroke="white"
+      strokeWidth="0.6"
+      fill="none"
+      opacity="0.2"
+    />
+    <Path
+      d="M0 80 C120 100, 230 70, 393 95"
+      stroke="white"
+      strokeWidth="0.6"
+      fill="none"
+      opacity="0.2"
+    />
+    <Path
+      d="M0 120 C150 140, 240 110, 393 135"
+      stroke="white"
+      strokeWidth="0.6"
+      fill="none"
+      opacity="0.2"
+    />
+    <Path
+      d="M0 160 C100 180, 200 150, 393 170"
+      stroke="white"
+      strokeWidth="0.6"
+      fill="none"
+      opacity="0.2"
+    />
+  </Svg>
+</View>
 
-            {showPasswordField && (
-              <Animated.View
-                style={[
-                  styles.inputContainer,
-                  {
-                    opacity: passwordFieldAnimation,
-                    transform: [{
-                      translateY: passwordFieldAnimation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-20, 0],
-                      }),
-                    }],
-                  },
-                ]}
-              >
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Contraseña"
-                  placeholderTextColor="#9CA3AF"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <TouchableOpacity
-                  style={[styles.arrowButton, !password.trim() && styles.arrowButtonDisabled]}
-                  onPress={handleArrowPress}
-                  disabled={isLoading || !password.trim()}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                  ) : (
-                    <Text style={styles.arrowText}>→</Text>
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
-            )}
 
-            <View style={styles.forgotPasswordContainer}>
-              <TouchableOpacity style={styles.forgotPasswordButton} onPress={handleForgotPassword}>
-                <Text style={styles.forgotPasswordText}>
-                  ¿Has olvidado tu contraseña?
-                </Text>
-                <Text style={styles.diagonalArrow}>↗</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+
+      {/* Formulario */}
+      <ScrollView contentContainerStyle={styles.formContainer}>
+        <Text style={styles.title}>Iniciar Sesión</Text>
+        <Text style={styles.dsubtitle}>Utiliza los mismos credenciales que en la web</Text>
+
+        <TextInput
+          placeholder="Correo electrónico o usuario"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          style={styles.input}
+        />
+        <TextInput placeholder="Contraseña" secureTextEntry style={styles.input} />
+
+        
+
+        <Pressable style={styles.btn}>
+          <Text style={styles.btnText}>Iniciar Sesión</Text>
+        </Pressable>
+
+        <View style={styles.signupRow}>
+          <Text style={styles.signupText}>¿Has olvidado tu contraseña? </Text>
+          <Pressable>
+          <Text style={styles.diagonalArrow}>↗</Text>
+          </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+
   header: {
-    alignItems: 'center',
-    marginBottom: 24,
+    width: "100%",
+    height: HEADER_HEIGHT,
   },
-  icon: {
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    textAlign: 'center',
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  form: {
-    marginTop: 16,
-  },
-  inputContainer: {
-    marginBottom: 16,
-    position: 'relative',
-  },
-  input: {
-    height: 56,
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingRight: 60,
-    fontSize: 16,
-    color: '#000000',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E5E7EB',
-  },
-  arrowButton: {
-    position: 'absolute',
-    right: 8,
-    top: 8,
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000000',
-  },
-  arrowButtonDisabled: {
-    backgroundColor: '#E5E7EB',
-  },
-  arrowText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  forgotPasswordContainer: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  forgotPasswordButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  forgotPasswordText: {
-    color: '#DA2B1F',
-    fontSize: 16,
-    fontWeight: '500',
-    marginRight: 8,
-  },
+
   diagonalArrow: {
     color: '#DA2B1F',
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
   },
+
+  dsubtitle: {
+    marginBottom: 12
+  },
+
+  formContainer: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 1, // 🔼 antes estaba en 28 → sube el bloque un poco
+    paddingBottom: 10,
+  },
+
+  title: {
+    fontSize: 32,
+    fontWeight: "800",
+    marginBottom: 12,
+  },
+
+  input: {
+    width: "100%",
+    padding: 15,
+    borderWidth: 1,
+    borderColor: "#e2e2e2",
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    marginBottom: 14,
+  },
+
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+
+  remember: { fontSize: 16, color: "#444" },
+
+  link: { color: "#DA2B1F", fontWeight: "600" },
+
+  btn: {
+    backgroundColor: "#DA2B1F",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 22,
+  },
+
+  btnText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+
+  signupRow: { flexDirection: "row", justifyContent: "center" },
+  signupText: { fontSize: 15, color: "#555" },
 });
