@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "expo-goblin",
+    "name": "Expo Stats",
     "slug": "expo-goblin",
     "version": "1.0.8",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/LogoAppIOS.png",
     "scheme": "expogoblin",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
