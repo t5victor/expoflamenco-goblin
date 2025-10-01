@@ -251,7 +251,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - ExpoSplashScreen (31.0.9):
+  - ExpoSplashScreen (31.0.10):
     - ExpoModulesCore
   - ExpoSymbols (1.0.7):
     - ExpoModulesCore
@@ -2695,7 +2695,7 @@ SPEC CHECKSUMS:
   ExpoKeepAwake: 1a2e820692e933c94a565ec3fbbe38ac31658ffe
   ExpoLinking: f051f28e50ea9269ff539317c166adec81d9342d
   ExpoModulesCore: 9281d8f1cda9d0c37dbce34c26014212b22eb8c0
-  ExpoSplashScreen: 0634b705953e6934a5156397162eefc1ee5d6a7c
+  ExpoSplashScreen: cbb839de72110dea1851dd3e85080b7923af2540
   ExpoSymbols: 1ae04ce686de719b9720453b988d8bc5bf776c68
   ExpoSystemUI: 6cd74248a2282adf6dec488a75fa532d69dee314
   ExpoWebBrowser: 533bc2a1b188eec1c10e4926decf658f1687b5e5
@@ -2787,6 +2787,6 @@ SPEC CHECKSUMS:
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   Yoga: 051f086b5ccf465ff2ed38a2cf5a558ae01aaaa1
 
-PODFILE CHECKSUM: d14ec859646901fb66a4ab373b7cbeb994416d63
+PODFILE CHECKSUM: 2766437fa7feafbb3ce5e2ebef6883d0d922dc95
 
 COCOAPODS: 1.16.2

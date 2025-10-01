@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,14 +7,33 @@ import {
   StyleSheet,
   ScrollView,
   Dimensions,
+  Alert,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const { height } = Dimensions.get("window");
 const HEADER_HEIGHT = Math.round(height * 0.40);
 
 export default function LoginScreen() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const { login, isLoading } = useAuth();
+  const { t } = useTranslation();
+
+  const handleLogin = async () => {
+    try {
+      const success = await login(username.trim(), password.trim());
+      if (!success) {
+        Alert.alert(t('auth.loginError'), t('auth.credentialsError'));
+      }
+    } catch (error) {
+      console.error('Login error details:', error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Header ola */}
@@ -76,13 +95,27 @@ export default function LoginScreen() {
           keyboardType="email-address"
           autoCapitalize="none"
           style={styles.input}
+          value={username}
+          onChangeText={setUsername}
         />
-        <TextInput placeholder="Contraseña" secureTextEntry style={styles.input} />
+        <TextInput
+          placeholder="Contraseña"
+          secureTextEntry
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+        />
 
         
 
-        <Pressable style={styles.btn}>
-          <Text style={styles.btnText}>Iniciar Sesión</Text>
+        <Pressable
+          style={[styles.btn, isLoading && styles.btnDisabled]}
+          onPress={handleLogin}
+          disabled={isLoading}
+        >
+          <Text style={styles.btnText}>
+            {isLoading ? 'Cargando...' : 'Iniciar Sesión'}
+          </Text>
         </Pressable>
 
         <View style={styles.signupRow}>
@@ -154,6 +187,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     marginBottom: 22,
+  },
+
+  btnDisabled: {
+    backgroundColor: "#ccc",
   },
 
   btnText: { color: "#fff", fontSize: 18, fontWeight: "700" },

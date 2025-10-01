@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "expogoblin.app"
-               BlueprintName = "expogoblin"
-               ReferencedContainer = "container:expogoblin.xcodeproj">
+               BuildableName = "ExpoStats.app"
+               BlueprintName = "ExpoStats"
+               ReferencedContainer = "container:ExpoStats.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "expogoblinTests.xctest"
-               BlueprintName = "expogoblinTests"
-               ReferencedContainer = "container:expogoblin.xcodeproj">
+               BuildableName = "ExpoStatsTests.xctest"
+               BlueprintName = "ExpoStatsTests"
+               ReferencedContainer = "container:ExpoStats.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "expogoblin.app"
-            BlueprintName = "expogoblin"
-            ReferencedContainer = "container:expogoblin.xcodeproj">
+            BuildableName = "ExpoStats.app"
+            BlueprintName = "ExpoStats"
+            ReferencedContainer = "container:ExpoStats.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "expogoblin.app"
-            BlueprintName = "expogoblin"
-            ReferencedContainer = "container:expogoblin.xcodeproj">
+            BuildableName = "ExpoStats.app"
+            BlueprintName = "ExpoStats"
+            ReferencedContainer = "container:ExpoStats.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
