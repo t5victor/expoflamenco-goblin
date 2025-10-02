@@ -1,7 +1,7 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/hooks/useAuth';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sidebar } from '@/components/Sidebar';
@@ -11,6 +11,9 @@ import { Feather } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { authorAnalyticsService, AuthorAnalytics } from '@/services/authorAnalytics';
 import { fetchSiteData } from '@/services/api';
+import { getDateRangeFromTimeFilter, DASHBOARD_TIME_FILTERS, DashboardTimeFilter } from '@/utils/timeFilters';
+import { dataCacheKeys, getCachedData, setCachedData } from '@/services/dataCache';
+import { addPrefetchListener } from '@/services/prefetchManager';
 
 // Using AuthorAnalytics interface from authorAnalytics service
 type DashboardData = AuthorAnalytics;
@@ -58,7 +61,7 @@ const parseWpDateLabel = (label: string): Date | null => {
   return parsed;
 };
 
-const buildDisplaySeries = (series: TrafficSeriesPoint[], timeFilter: string): DisplaySeriesPoint[] => {
+const buildDisplaySeries = (series: TrafficSeriesPoint[], timeFilter: DashboardTimeFilter): DisplaySeriesPoint[] => {
   if (!Array.isArray(series) || series.length === 0) {
     return [];
   }
@@ -160,9 +163,53 @@ interface MetricCardProps {
 
 interface PostsCardProps {
   data: DashboardData;
-  timeFilter: string;
+  timeFilter: DashboardTimeFilter;
   t: any;
 }
+
+interface RankingCardProps {
+  posts: DashboardData['topPosts'];
+  isDark: boolean;
+  t: any;
+}
+
+interface RecentActivityCardProps {
+  posts: DashboardData['recentPosts'];
+  isDark: boolean;
+  t: any;
+}
+
+interface StatsSummaryCardProps {
+  data: DashboardData;
+  isDark: boolean;
+  t: any;
+}
+
+const getTrendVisuals = (trend?: 'up' | 'down' | 'neutral') => {
+  switch (trend) {
+    case 'up':
+      return {
+        tint: '#DCFCE7',
+        iconColor: '#166534',
+        labelColor: '#166534',
+        icon: 'trending-up' as keyof typeof Feather.glyphMap,
+      };
+    case 'down':
+      return {
+        tint: '#FEE2E2',
+        iconColor: '#B91C1C',
+        labelColor: '#B91C1C',
+        icon: 'trending-down' as keyof typeof Feather.glyphMap,
+      };
+    default:
+      return {
+        tint: '#E5E7EB',
+        iconColor: '#1F2937',
+        labelColor: '#1F2937',
+        icon: 'minus' as keyof typeof Feather.glyphMap,
+      };
+  }
+};
 
 const PostsCard: React.FC<PostsCardProps> = ({
   data,
@@ -171,61 +218,57 @@ const PostsCard: React.FC<PostsCardProps> = ({
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const accentColor = '#8B5CF6';
+  const comparison = data.comparison?.posts;
+  const trendVisual = comparison ? getTrendVisuals(comparison.trend) : null;
+  const iconBackground = isDark ? accentColor + '33' : accentColor + '18';
 
   return (
     <View style={[
       styles.metricCard,
       styles.mediumCard,
       {
-        backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-        borderColor: isDark ? '#374151' : '#E5E7EB'
+        backgroundColor: isDark ? '#111827' : '#FFFFFF',
+        borderColor: accentColor + '26',
+        shadowColor: accentColor,
       }
     ]}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardTitleRow}>
-          <View style={[
-            styles.iconContainer,
-            { backgroundColor: '#8B5CF6' + '15' }
-          ]}>
-            <IconSymbol name="doc" size={18} color="#8B5CF6" />
+      <View style={[styles.cardAccentBar, { backgroundColor: accentColor + '44' }]} />
+      <View style={styles.metricCardBody}>
+        <View style={styles.metricHeaderRow}>
+          <View style={[styles.metricIcon, { backgroundColor: iconBackground }] }>
+            <IconSymbol name="doc" size={18} color={accentColor} />
           </View>
           <Text style={[
-            styles.cardTitle,
-            { color: isDark ? '#D1D5DB' : '#374151' }
+            styles.metricTitle,
+            { color: isDark ? '#F9FAFB' : '#111827' }
           ]}>
             {`${t(`timePeriods.${timeFilter}`)} ${t('dashboard.postsCount')}`}
           </Text>
+          {comparison && trendVisual && (
+            <View style={[styles.trendPill, { backgroundColor: trendVisual.tint }]}>
+              <Feather name={trendVisual.icon} size={12} color={trendVisual.iconColor} />
+              <Text style={[styles.trendLabel, { color: trendVisual.labelColor }]}>
+                {comparison.percentage}
+              </Text>
+            </View>
+          )}
         </View>
-      </View>
 
-      <Text style={[
-        styles.cardValue,
-        { color: isDark ? '#FFFFFF' : '#111827' }
-      ]}>
-        {data.recentPosts.length.toString()}
-      </Text>
-
-      <Text style={[
-        styles.cardSubtitle,
-        { color: isDark ? '#9CA3AF' : '#6B7280' }
-      ]}>
-        {t('dashboard.postsTotalDesc')}
-      </Text>
-
-      {data.comparison?.posts && (
-        <View style={[
-          styles.trendBadge,
-          {
-            backgroundColor: data.comparison.posts.trend === 'up' ? '#10B981' :
-                           data.comparison.posts.trend === 'down' ? '#EF4444' : '#6B7280'
-          }
+        <Text style={[
+          styles.metricValue,
+          { color: isDark ? '#FFFFFF' : '#111827' }
         ]}>
-          <Text style={[styles.trendText, { color: '#FFFFFF' }]}>
-            {data.comparison.posts.trend === 'up' ? '↗' :
-             data.comparison.posts.trend === 'down' ? '↘' : '→'} {data.comparison.posts.percentage}
-          </Text>
-        </View>
-      )}
+          {data.totalPosts.toString()}
+        </Text>
+
+        <Text style={[
+          styles.metricSubtitle,
+          { color: isDark ? '#9CA3AF' : '#6B7280' }
+        ]}>
+          {t('dashboard.postsTotalDesc')}
+        </Text>
+      </View>
     </View>
   );
 };
@@ -242,68 +285,170 @@ const MetricCard: React.FC<MetricCardProps> = ({
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-
-  const getTrendColor = () => {
-    if (trend === 'up') return '#10B981';
-    if (trend === 'down') return '#EF4444';
-    return '#6B7280';
-  };
+  const trendVisual = trend ? getTrendVisuals(trend) : null;
+  const cardBackground = isDark ? '#111827' : '#FFFFFF';
+  const iconBackground = isDark ? accentColor + '33' : accentColor + '1F';
 
   return (
     <View style={[
       styles.metricCard,
       styles[`${size}Card`],
       {
-        backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-        borderColor: accentColor + '20',
+        backgroundColor: cardBackground,
+        borderColor: accentColor + '25',
         shadowColor: accentColor,
       }
     ]}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardTitleRow}>
-          <View style={[
-            styles.iconContainer,
-            { backgroundColor: accentColor + '15' }
-          ]}>
+      <View style={[styles.cardAccentBar, { backgroundColor: accentColor + '3D' }]} />
+      <View style={styles.metricCardBody}>
+        <View style={styles.metricHeaderRow}>
+          <View style={[styles.metricIcon, { backgroundColor: iconBackground }] }>
             <Feather name={icon} size={18} color={accentColor} />
           </View>
           <Text style={[
-            styles.cardTitle,
-            { color: isDark ? '#D1D5DB' : '#374151' }
+            styles.metricTitle,
+            { color: isDark ? '#F9FAFB' : '#111827' }
           ]}>
             {title}
           </Text>
+          {trendVisual && trendValue && (
+            <View style={[styles.trendPill, { backgroundColor: trendVisual.tint }]}>
+              <Feather name={trendVisual.icon} size={12} color={trendVisual.iconColor} />
+              <Text style={[styles.trendLabel, { color: trendVisual.labelColor }]}>
+                {trendValue}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={[
+          styles.metricValue, 
+          { color: isDark ? '#FFFFFF' : '#111827' }
+        ]}>
+          {typeof value === 'number' ? value.toLocaleString() : value}
+        </Text>
+
+        {subtitle && (
+          <Text style={[
+            styles.metricSubtitle, 
+            { color: isDark ? '#9CA3AF' : '#6B7280' }
+          ]}>
+            {subtitle}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+};
+
+const RankingCard: React.FC<RankingCardProps> = ({ posts, isDark, t }) => {
+  const topPosts = Array.isArray(posts) ? posts : [];
+  const podium = topPosts.slice(0, 3);
+  const others = topPosts.slice(3, 7);
+
+  const podiumSlots = [
+    { rank: 2, sourceIndex: 1, height: 78, accent: '#6366F1' },
+    { rank: 1, sourceIndex: 0, height: 104, accent: '#F97316' },
+    { rank: 3, sourceIndex: 2, height: 68, accent: '#14B8A6' },
+  ];
+
+  const cardBackground = isDark ? '#111827' : '#FFFFFF';
+  const borderColor = isDark ? '#1F2937' : '#E5E7EB';
+
+  const renderPodiumColumn = ({ rank, sourceIndex, height, accent }: typeof podiumSlots[number]) => {
+    const entry = podium[sourceIndex];
+    if (!entry || !entry.post) {
+      return (
+        <View key={rank} style={styles.podiumColumnEmpty}>
+          <View style={[styles.podiumBar, { height, backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]} />
+          <Text style={[styles.podiumLabel, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>#{rank}</Text>
+        </View>
+      );
+    }
+
+    const title = entry.post.title?.rendered || t('dashboard.rankingEmpty');
+    const viewsLabel = `${entry.views?.toLocaleString?.() || '0'} ${t('articles.views') || 'views'}`;
+
+    return (
+      <View key={rank} style={styles.podiumColumn}>
+        <View
+          style={[
+            styles.podiumBar,
+            {
+              height,
+              backgroundColor: accent,
+            },
+          ]}
+        >
+          {rank === 1 && <Feather name="award" size={16} color="#FFFFFF" style={styles.podiumIcon} />}
+          <Text style={[styles.podiumRankText, { color: '#FFFFFF' }]}>#{rank}</Text>
+        </View>
+        <Text
+          style={[styles.podiumTitle, { color: isDark ? '#F9FAFB' : '#111827' }]}
+          numberOfLines={2}
+        >
+          {title}
+        </Text>
+        <Text style={[styles.podiumMeta, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{viewsLabel}</Text>
+      </View>
+    );
+  };
+
+  return (
+    <View style={[styles.contentCard, { backgroundColor: cardBackground, borderColor }] }>
+      <View style={styles.cardHeaderRow}>
+        <View>
+          <Text style={[styles.cardHeadline, { color: isDark ? '#F9FAFB' : '#111827' }]}>
+            {t('dashboard.rankingTitle')}
+          </Text>
+          <Text style={[styles.cardDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+            {t('dashboard.rankingSubtitle')}
+          </Text>
         </View>
       </View>
-      
-      <Text style={[
-        styles.cardValue, 
-        { color: isDark ? '#FFFFFF' : '#111827' }
-      ]}>
-        {typeof value === 'number' ? value.toLocaleString() : value}
-      </Text>
-      
-      {subtitle && (
-        <Text style={[
-          styles.cardSubtitle, 
-          { color: isDark ? '#9CA3AF' : '#6B7280' }
-        ]}>
-          {subtitle}
-        </Text>
-      )}
-      
-      {trend && trendValue && (
-        <View style={[
-          styles.trendBadge,
-          { backgroundColor: getTrendColor() }
-        ]}>
-          <Feather 
-            name={trend === 'up' ? 'trending-up' : trend === 'down' ? 'trending-down' : 'minus'} 
-            size={12} 
-            color="white" 
-          />
-          <Text style={styles.trendText}>
-            {trendValue}
+
+      {podium.length > 0 ? (
+        <>
+          <Text style={[styles.sectionLabel, { color: isDark ? '#D1D5DB' : '#6B7280' }]}>
+            {t('dashboard.topPostViews')}
+          </Text>
+          <View style={styles.podiumRow}>
+            {podiumSlots.map(renderPodiumColumn)}
+          </View>
+
+          {others.length > 0 && (
+            <View style={styles.rankingList}>
+              <Text style={[styles.sectionLabel, { color: isDark ? '#D1D5DB' : '#6B7280' }]}>
+                {t('dashboard.rankingOthers')}
+              </Text>
+              {others.map((entry, index) => (
+                <View key={entry.post?.id ?? index} style={styles.rankingRow}>
+                  <View style={[styles.rankingBadge, { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]}>
+                    <Text style={[styles.rankingBadgeText, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+                      #{index + 4}
+                    </Text>
+                  </View>
+                  <View style={styles.rankingBody}>
+                    <Text
+                      style={[styles.rankingTitle, { color: isDark ? '#F9FAFB' : '#111827' }]}
+                      numberOfLines={1}
+                    >
+                      {entry.post?.title?.rendered || '—'}
+                    </Text>
+                    <Text style={[styles.rankingMeta, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                      {(entry.views || 0).toLocaleString()} {t('articles.views') || 'views'}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </>
+      ) : (
+        <View style={styles.emptyState}>
+          <Feather name="bar-chart-2" size={20} color={isDark ? '#4B5563' : '#9CA3AF'} />
+          <Text style={[styles.emptyStateText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+            {t('dashboard.rankingEmpty')}
           </Text>
         </View>
       )}
@@ -311,38 +456,125 @@ const MetricCard: React.FC<MetricCardProps> = ({
   );
 };
 
+const RecentActivityCard: React.FC<RecentActivityCardProps> = ({ posts, isDark, t }) => {
+  const recent = Array.isArray(posts) ? posts.slice(0, 5) : [];
+  const cardBackground = isDark ? '#111827' : '#FFFFFF';
+  const borderColor = isDark ? '#1F2937' : '#E5E7EB';
 
-// Helper function to get appropriate labels based on time period
-const getTimePeriodLabels = (timePeriod: string, t: any) => {
-  const labels = {
-    '24h': {
-      visitors: t('todayVisitors'),
-      subscriptions: t('todaySubscriptions'), 
-      revenue: t('todayRevenue')
-    },
-    '7d': {
-      visitors: t('weeklyVisitors'),
-      subscriptions: t('weeklySubscriptions'),
-      revenue: t('weeklyRevenue')  
-    },
-    '30d': {
-      visitors: t('monthlyVisitors'),
-      subscriptions: t('monthlySubscriptions'),
-      revenue: t('monthlyRevenue')
-    },
-    '90d': {
-      visitors: t('quarterlyVisitors'),
-      subscriptions: t('quarterlySubscriptions'), 
-      revenue: t('quarterlyRevenue')
-    }
-  };
-  return labels[timePeriod as keyof typeof labels] || labels['30d'];
+  return (
+    <View style={[styles.contentCard, { backgroundColor: cardBackground, borderColor }]}>
+      <View style={styles.cardHeaderRow}>
+        <View>
+          <Text style={[styles.cardHeadline, { color: isDark ? '#F9FAFB' : '#111827' }]}>
+            {t('dashboard.recentActivityTitle')}
+          </Text>
+          <Text style={[styles.cardDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+            {t('dashboard.recentActivitySubtitle')}
+          </Text>
+        </View>
+      </View>
+
+      {recent.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Feather name="file-text" size={20} color={isDark ? '#4B5563' : '#9CA3AF'} />
+          <Text style={[styles.emptyStateText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+            {t('dashboard.recentActivityEmpty')}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.activityList}>
+          {recent.map((post) => (
+            <View key={post.id} style={styles.activityRow}>
+              <View
+                style={[
+                  styles.activityBullet,
+                  { backgroundColor: isDark ? '#1F2937' : '#FEE2E2' },
+                ]}
+              >
+                <Feather name="edit-3" size={14} color={isDark ? '#F9FAFB' : '#9F1239'} />
+              </View>
+              <View style={styles.activityBody}>
+                <Text
+                  style={[styles.activityTitle, { color: isDark ? '#F9FAFB' : '#111827' }]}
+                  numberOfLines={1}
+                >
+                  {post.title?.rendered || '—'}
+                </Text>
+                <Text style={[styles.activityMeta, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                  {new Date(post.date).toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
 };
+
+const StatsSummaryCard: React.FC<StatsSummaryCardProps> = ({ data, isDark, t }) => {
+  const cardBackground = isDark ? '#111827' : '#FFFFFF';
+  const borderColor = isDark ? '#1F2937' : '#E5E7EB';
+
+  const summaryItems = [
+    {
+      label: t('dashboard.articlesCount'),
+      value: data.totalPosts.toLocaleString(),
+      color: '#3B82F6',
+    },
+    {
+      label: t('dashboard.totalViewsCount'),
+      value: data.totalViews.toLocaleString(),
+      color: '#10B981',
+    },
+    {
+      label: t('dashboard.avgViewsPerArticle'),
+      value: data.avgViewsPerPost.toFixed(1),
+      color: '#F59E0B',
+    },
+  ];
+
+  return (
+    <View style={[styles.contentCard, { backgroundColor: cardBackground, borderColor }]}>
+      <View style={styles.cardHeaderRow}>
+        <View>
+          <Text style={[styles.cardHeadline, { color: isDark ? '#F9FAFB' : '#111827' }]}>
+            {t('dashboard.statsSummary')}
+          </Text>
+          <Text style={[styles.cardDescription, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+            {t('dashboard.rankingSubtitle')}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.summaryGrid}>
+        {summaryItems.map((item) => (
+          <View key={item.label} style={[styles.summaryChip, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB' }]}>
+            <View style={[styles.summaryDot, { backgroundColor: item.color }]} />
+            <View style={styles.summaryTextGroup}>
+              <Text style={[styles.summaryValue, { color: isDark ? '#F9FAFB' : '#111827' }]}>
+                {item.value}
+              </Text>
+              <Text style={[styles.summaryLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                {item.label}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
 
 export default function AuthorDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  const [timeFilter, setTimeFilter] = useState('30d');
+  const [timeFilter, setTimeFilter] = useState<DashboardTimeFilter>('30d');
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<ChartDataState | null>(null);
@@ -354,135 +586,177 @@ export default function AuthorDashboard() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const isDark = colorScheme === 'dark';
-  const isDesktop = screenWidth >= 768;
+  const userInteractionRef = useRef(false);
 
-  useEffect(() => {
-    if (user) {
-      loadAuthorData();
-    }
-  }, [user, timeFilter]);
-
-  useEffect(() => {
-    loadChartData();
-  }, [timeFilter, selectedSite]);
-
-  const getDateRangeFromTimeFilter = (timeFilter: string) => {
-    const now = new Date();
-    const endDate = now.toISOString().split('T')[0]; // YYYY-MM-DD format
-
-    switch (timeFilter) {
-      case '24h':
-        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        return {
-          from: yesterday.toISOString().split('T')[0],
-          to: endDate
-        };
-      case '7d':
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return {
-          from: weekAgo.toISOString().split('T')[0],
-          to: endDate
-        };
-      case '30d':
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        return {
-          from: monthAgo.toISOString().split('T')[0],
-          to: endDate
-        };
-      case '90d':
-        const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        return {
-          from: quarterAgo.toISOString().split('T')[0],
-          to: endDate
-        };
-      default:
-        return undefined;
-    }
+  const markUserInteraction = () => {
+    userInteractionRef.current = true;
   };
 
-  const loadAuthorData = async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      const dateRange = getDateRangeFromTimeFilter(timeFilter);
-      const authorData = await authorAnalyticsService.getAuthorAnalytics(
-        user.userId,
-        timeFilter,
-        user.token,
-        dateRange
-      );
-      setData(authorData);
-      setHasAuthorError(false);
-    } catch (error) {
-      console.error('Author analytics error:', (error as Error).message);
-      // Set data to null on error - will show ERROR in UI
-      setData(null);
-      setHasAuthorError(true);
-    } finally {
-      setLoading(false);
+  const handleTimeFilterChange = (nextFilter: DashboardTimeFilter) => {
+    if (timeFilter === nextFilter) {
+      return;
     }
+    markUserInteraction();
+    setTimeFilter(nextFilter);
   };
 
-  const loadChartData = async () => {
-    try {
-      setChartLoading(true);
+  const applySiteMetricsToChart = useCallback((siteMetrics: any) => {
+    const normalizedWeeklyData: TrafficSeriesPoint[] = Array.isArray(siteMetrics?.weeklyData)
+      ? siteMetrics.weeklyData.map((item: any, index: number) => {
+          const rawLabel = typeof item?.day === 'string' ? item.day : '';
+          const visitors = Number(item?.visitors ?? item?.visitor ?? 0) || 0;
+          return {
+            rawLabel,
+            visitors,
+            date: parseWpDateLabel(rawLabel),
+            index,
+          };
+        })
+      : [];
 
-      const siteMetrics = await fetchSiteData(selectedSite, timeFilter);
+    setChartData({
+      rawSeries: normalizedWeeklyData,
+      displaySeries: buildDisplaySeries(normalizedWeeklyData, timeFilter),
+    });
+  }, [timeFilter]);
 
-      if (siteMetrics?.isError) {
-        setHasMetricsError(true);
-        setChartData(null);
+  const loadAuthorData = useCallback(
+    async ({ allowNetwork = true, silent = false }: { allowNetwork?: boolean; silent?: boolean } = {}) => {
+      if (!user) return;
+
+      const cacheKey = dataCacheKeys.authorAnalytics(user.userId, timeFilter);
+      const cacheResult = await getCachedData<DashboardData>(cacheKey);
+      const cachedData = cacheResult.data;
+      const hasCached = !!cachedData;
+
+      if (hasCached) {
+        setData(cachedData);
+        setHasAuthorError(false);
+        setLoading(false);
+      } else if (!silent) {
+        setLoading(true);
+      }
+
+      const needsFetch =
+        allowNetwork && (!hasCached || cacheResult.isExpired);
+
+      if (!needsFetch) {
         return;
       }
 
-      setHasMetricsError(false);
+      try {
+        const dateRange = getDateRangeFromTimeFilter(timeFilter);
+        const authorData = await authorAnalyticsService.getAuthorAnalytics(
+          user.userId,
+          timeFilter,
+          user.token,
+          dateRange
+        );
+        setData(authorData);
+        setHasAuthorError(false);
+        await setCachedData(cacheKey, authorData);
+        setLoading(false);
+      } catch (error) {
+        console.error('Author analytics error:', (error as Error).message);
+        if (!hasCached) {
+          setData(null);
+          setHasAuthorError(true);
+          setLoading(false);
+        }
+      }
+    },
+    [user, timeFilter]
+  );
 
-      const normalizedWeeklyData: TrafficSeriesPoint[] = Array.isArray(siteMetrics?.weeklyData)
-        ? siteMetrics.weeklyData.map((item: any, index: number) => {
-            const rawLabel = typeof item?.day === 'string' ? item.day : '';
-            const visitors = Number(item?.visitors ?? item?.visitor ?? 0) || 0;
-            return {
-              rawLabel,
-              visitors,
-              date: parseWpDateLabel(rawLabel),
-              index,
-            };
-          })
-        : [];
+  const loadChartData = useCallback(
+    async ({ allowNetwork = true, silent = false }: { allowNetwork?: boolean; silent?: boolean } = {}) => {
+      const cacheKey = dataCacheKeys.siteMetrics(selectedSite, timeFilter);
+      const cacheResult = await getCachedData<any>(cacheKey);
+      const cachedMetrics = cacheResult.data;
+      const hasUsableCached = !!cachedMetrics && !cachedMetrics.isError;
 
-      setChartData({
-        rawSeries: normalizedWeeklyData,
-        displaySeries: buildDisplaySeries(normalizedWeeklyData, timeFilter),
-      });
-    } catch (error) {
-      console.error('Chart data fetch error:', error);
-      setChartData(null);
-      setHasMetricsError(true);
-    } finally {
-      setChartLoading(false);
+      if (hasUsableCached) {
+        applySiteMetricsToChart(cachedMetrics);
+        setHasMetricsError(false);
+        setChartLoading(false);
+      } else if (!silent) {
+        setChartLoading(true);
+      }
+
+      const needsFetch =
+        allowNetwork && (!hasUsableCached || cacheResult.isExpired);
+
+      if (!needsFetch) {
+        return;
+      }
+
+      try {
+        const siteMetrics = await fetchSiteData(selectedSite, timeFilter);
+
+        if (siteMetrics?.isError) {
+          if (!hasUsableCached) {
+            setHasMetricsError(true);
+            setChartData(null);
+            setChartLoading(false);
+          }
+        } else {
+          applySiteMetricsToChart(siteMetrics);
+          setHasMetricsError(false);
+          await setCachedData(cacheKey, siteMetrics);
+          setChartLoading(false);
+        }
+      } catch (error) {
+        console.error('Chart data fetch error:', error);
+        if (!hasUsableCached) {
+          setChartData(null);
+          setHasMetricsError(true);
+          setChartLoading(false);
+        }
+      }
+    },
+    [applySiteMetricsToChart, selectedSite, timeFilter]
+  );
+
+  useEffect(() => {
+    const unsubscribe = addPrefetchListener(() => {
+      loadAuthorData({ allowNetwork: false, silent: true });
+      loadChartData({ allowNetwork: false, silent: true });
+    });
+
+    return unsubscribe;
+  }, [loadAuthorData, loadChartData]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
     }
-  };
 
-  const onRefresh = React.useCallback(async () => {
+    const fromInteraction = userInteractionRef.current;
+    const allowNetwork = !fromInteraction;
+
+    loadAuthorData({ allowNetwork });
+    loadChartData({ allowNetwork });
+
+    if (fromInteraction) {
+      userInteractionRef.current = false;
+    }
+  }, [user, timeFilter, selectedSite, loadAuthorData, loadChartData]);
+
+  const onRefresh = useCallback(async () => {
+    markUserInteraction();
     setRefreshing(true);
-    await loadAuthorData();
-    await loadChartData();
+    await Promise.all([
+      loadAuthorData({ allowNetwork: false, silent: true }),
+      loadChartData({ allowNetwork: false, silent: true })
+    ]);
     setRefreshing(false);
-  }, [user, timeFilter, selectedSite]);
+    userInteractionRef.current = false;
+  }, [loadAuthorData, loadChartData]);
 
-  const timeFilters = [
-    { id: '24h', label: '24h' },
-    { id: '7d', label: '7d' },
-    { id: '30d', label: '30d' },
-    { id: '90d', label: '90d' },
-  ];
-
-  const subscriptionFilters = [
-    { id: 'all', label: t('allSubscriptions') },
-    { id: 'free', label: t('fanSubscriptions') },
-    { id: 'paid', label: t('vipSubscriptions') },
-  ];
+  const timeFilters = DASHBOARD_TIME_FILTERS.map((filter) => ({
+    id: filter as DashboardTimeFilter,
+    label: filter,
+  }));
 
   const showOffline = hasAuthorError || hasMetricsError;
 
@@ -631,7 +905,7 @@ export default function AuthorDashboard() {
                         shadowColor: '#DA2B1F',
                       }
                     ]}
-                    onPress={() => setTimeFilter(filter.id)}
+                    onPress={() => handleTimeFilterChange(filter.id as DashboardTimeFilter)}
                   >
                       <Text style={[
                         styles.timeSelectorText,
@@ -855,146 +1129,12 @@ export default function AuthorDashboard() {
               {/* Chart and Secondary Metrics */}
               <View style={[styles.contentRow, isMobile && styles.mobileContentRow]}>
                 <View style={[styles.leftColumn, isMobile && styles.mobileLeftColumn]}>
-                  {/* Top Posts List */}
-                  <View style={[
-                    styles.chartCard,
-                    { backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF' }
-                  ]}>
-                    <Text style={[
-                      styles.chartTitle,
-                      { color: isDark ? '#FFFFFF' : '#111827' }
-                    ]}>
-                      Artículos Más Vistos
-                    </Text>
-                    {data.topPosts.slice(0, 5).map((post, index) => (
-                      <View key={post.post.id} style={styles.postItem}>
-                        <View style={styles.postInfo}>
-                          <Text style={[
-                            styles.postTitle,
-                            { color: isDark ? '#D1D5DB' : '#374151' }
-                          ]} numberOfLines={1}>
-                            {post.post.title.rendered}
-                          </Text>
-                          <Text style={[
-                            styles.postViews,
-                            { color: isDark ? '#9CA3AF' : '#6B7280' }
-                          ]}>
-                            {post.views.toLocaleString()} vistas
-                          </Text>
-                        </View>
-                        <View style={[
-                          styles.postRank,
-                          { backgroundColor: isDark ? '#374151' : '#F3F4F6' }
-                        ]}>
-                          <Text style={[
-                            styles.postRankText,
-                            { color: isDark ? '#FFFFFF' : '#374151' }
-                          ]}>
-                            #{index + 1}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-
+                  <RankingCard posts={data.topPosts} isDark={isDark} t={t} />
                 </View>
-                
+
                 <View style={[styles.rightColumn, isMobile && styles.mobileRightColumn]}>
-                  <View style={styles.rightMetrics}>
-                    <MetricCard
-                      title={t('dashboard.articlesRecentTitle')}
-                      value={data.recentPosts.length.toString()}
-                      subtitle={t('dashboard.articlesRecentSubtitle')}
-                      trend="neutral"
-                      trendValue="N/A"
-                      icon="clock"
-                      size="small"
-                    />
-                    <MetricCard
-                      title={t('dashboard.topPositionTitle')}
-                      value={data.topPosts.length > 0 ? "1" : "N/A"}
-                      subtitle={t('dashboard.topPositionSubtitle')}
-                      trend="up"
-                      trendValue="Top"
-                      icon="star"
-                      size="small"
-                    />
-                  </View>
-
-                  <View style={[
-                    styles.topCountriesCard,
-                    {
-                      backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-                      borderColor: isDark ? '#374151' : '#E5E7EB'
-                    }
-                  ]}>
-                    <Text style={[
-                      styles.sideCardTitle,
-                      { color: isDark ? '#FFFFFF' : '#111827' }
-                    ]}>
-                      {t('dashboard.articlesRecent')}
-                    </Text>
-                    {data.recentPosts.slice(0, 5).map((post, index) => (
-                      <View key={post.id} style={styles.postItem}>
-                        <View style={styles.postInfo}>
-                          <Text style={[
-                            styles.postTitle,
-                            { color: isDark ? '#D1D5DB' : '#374151' }
-                          ]} numberOfLines={2}>
-                            {post.title.rendered}
-                          </Text>
-                          <Text style={[
-                            styles.postViews,
-                            { color: isDark ? '#9CA3AF' : '#6B7280' }
-                          ]}>
-                            {new Date(post.date).toLocaleDateString('es-ES')}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-
-                  <View style={[
-                    styles.alertsCard,
-                    {
-                      backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
-                      borderColor: isDark ? '#374151' : '#E5E7EB'
-                    }
-                  ]}>
-                    <Text style={[
-                      styles.sideCardTitle,
-                      { color: isDark ? '#FFFFFF' : '#111827' }
-                    ]}>
-                      {t('dashboard.statsSummary')}
-                    </Text>
-                    <View style={styles.activityItem}>
-                      <View style={[styles.activityDot, { backgroundColor: '#10B981' }]} />
-                      <Text style={[
-                        styles.activityText,
-                        { color: isDark ? '#D1D5DB' : '#374151' }
-                      ]}>
-                        {data.totalPosts} {t('dashboard.articlesCount')}
-                      </Text>
-                    </View>
-                    <View style={styles.activityItem}>
-                      <View style={[styles.activityDot, { backgroundColor: '#DA2B1F' }]} />
-                      <Text style={[
-                        styles.activityText,
-                        { color: isDark ? '#D1D5DB' : '#374151' }
-                      ]}>
-                        {data.totalViews.toLocaleString()} {t('dashboard.totalViewsCount')}
-                      </Text>
-                    </View>
-                    <View style={styles.activityItem}>
-                      <View style={[styles.activityDot, { backgroundColor: '#F59E0B' }]} />
-                      <Text style={[
-                        styles.activityText,
-                        { color: isDark ? '#D1D5DB' : '#374151' }
-                      ]}>
-                        {data.avgViewsPerPost.toFixed(1)} {t('dashboard.avgViewsPerArticle')}
-                      </Text>
-                    </View>
-                  </View>
+                  <RecentActivityCard posts={data.recentPosts} isDark={isDark} t={t} />
+                  <StatsSummaryCard data={data} isDark={isDark} t={t} />
                 </View>
               </View>
             </View>
@@ -1169,18 +1309,18 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 16,
   },
-  rightMetrics: {
-    flexDirection: 'row',
-    gap: 16,
-  },
   metricCard: {
-    padding: 24,
     borderRadius: 20,
-    borderWidth: 0,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    borderBottomColor: 'rgba(0, 0, 0, 0.15)',
-    borderRightColor: 'rgba(0, 0, 0, 0.15)',
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    elevation: 4,
+    backgroundColor: '#FFFFFF',
   },
   mediumCard: {
     flex: 1,
@@ -1191,172 +1331,221 @@ const styles = StyleSheet.create({
   largeCard: {
     flex: 2,
   },
-  cardHeader: {
-    marginBottom: 12,
+  metricCardBody: {
+    padding: 20,
+    gap: 12,
   },
-  cardTitleRow: {
+  metricHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  metricIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardTitle: {
+  metricTitle: {
+    flex: 1,
     fontSize: 13,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  cardValue: {
-    fontSize: 28,
+  metricValue: {
+    fontSize: 32,
     fontWeight: '700',
-    marginBottom: 4,
+    letterSpacing: -0.5,
   },
-  cardSubtitle: {
+  metricSubtitle: {
     fontSize: 13,
-    marginBottom: 12,
+    lineHeight: 18,
   },
-  trendBadge: {
+  cardAccentBar: {
+    height: 4,
+    width: '100%',
+  },
+  trendPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
+    borderRadius: 999,
     gap: 4,
   },
-  trendText: {
-    color: 'white',
+  trendLabel: {
     fontSize: 11,
     fontWeight: '600',
   },
-  chartCard: {
-    padding: 28,
-    borderRadius: 16,
-    borderWidth: 0,
-    marginBottom: 20,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    borderBottomColor: 'rgba(0, 0, 0, 0.15)',
-    borderRightColor: 'rgba(0, 0, 0, 0.15)',
+  contentCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    gap: 20,
   },
-  chartHeader: {
+  cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    alignItems: 'flex-start',
   },
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  chartAction: {
-    padding: 4,
-  },
-  chart: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 120,
-    paddingTop: 20,
-  },
-  barContainer: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  bar: {
-    width: 24,
-    borderRadius: 4,
-    marginVertical: 4,
-  },
-  barLabel: {
-    fontSize: 11,
-    marginTop: 8,
-    fontWeight: '500',
-  },
-  barValue: {
-    fontSize: 10,
+  cardHeadline: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.2,
     marginBottom: 4,
-    fontWeight: '500',
   },
-  secondaryMetrics: {
+  cardDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    fontWeight: '600',
+  },
+  podiumRow: {
     flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
     gap: 16,
   },
-  topCountriesCard: {
-    padding: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  alertsCard: {
-    padding: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  sideCardTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  countryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  countryLeft: {
-    flexDirection: 'row',
+  podiumColumn: {
+    flex: 1,
     alignItems: 'center',
     gap: 8,
   },
-  countryFlag: {
+  podiumColumnEmpty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  podiumBar: {
+    width: '100%',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 12,
+    position: 'relative',
+  },
+  podiumIcon: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+  },
+  podiumRankText: {
     fontSize: 16,
+    fontWeight: '700',
   },
-  countryName: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  countryVisits: {
+  podiumLabel: {
     fontSize: 12,
     fontWeight: '600',
   },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
-  },
-  activityDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  activityText: {
-    fontSize: 12,
-    flex: 1,
-  },
-  postItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  postInfo: {
-    flex: 1,
-  },
-  postTitle: {
+  podiumTitle: {
     fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 4,
+    fontWeight: '600',
+    textAlign: 'center',
   },
-  postViews: {
+  podiumMeta: {
+    fontSize: 12,
+  },
+  rankingList: {
+    gap: 12,
+  },
+  rankingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rankingBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankingBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  rankingBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  rankingBody: {
+    flex: 1,
+    gap: 2,
+  },
+  rankingTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  rankingMeta: {
+    fontSize: 12,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 24,
+  },
+  emptyStateText: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  activityList: {
+    gap: 16,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  activityBullet: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityBody: {
+    flex: 1,
+    gap: 2,
+  },
+  activityTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  activityMeta: {
+    fontSize: 12,
+  },
+  summaryGrid: {
+    flexDirection: 'column',
+    gap: 12,
+  },
+  summaryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: 16,
+  },
+  summaryDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 10,
+  },
+  summaryTextGroup: {
+    flex: 1,
+  },
+  summaryValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  summaryLabel: {
     fontSize: 12,
   },
   postRank: {
@@ -1449,6 +1638,7 @@ const styles = StyleSheet.create({
   },
   mobileRightColumn: {
     flex: 1,
+    gap: 16,
   },
 
   // Enhanced Chart Styles

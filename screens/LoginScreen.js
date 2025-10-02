@@ -8,6 +8,7 @@ import {
   ScrollView,
   Dimensions,
   Alert,
+  Linking,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -31,6 +32,22 @@ export default function LoginScreen() {
       }
     } catch (error) {
       console.error('Login error details:', error);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    const resetUrl = 'https://expoflamenco.com/membresias/login/?action=reset_pass';
+
+    try {
+      const supported = await Linking.canOpenURL(resetUrl);
+      if (supported) {
+        await Linking.openURL(resetUrl);
+      } else {
+        Alert.alert(t('auth.serverError'));
+      }
+    } catch (error) {
+      console.error('Password reset link error:', error);
+      Alert.alert(t('auth.serverError'));
     }
   };
 
@@ -118,12 +135,10 @@ export default function LoginScreen() {
           </Text>
         </Pressable>
 
-        <View style={styles.signupRow}>
+        <Pressable style={styles.signupRow} onPress={handleForgotPassword}>
           <Text style={styles.signupText}>¿Has olvidado tu contraseña? </Text>
-          <Pressable>
           <Text style={styles.diagonalArrow}>↗</Text>
-          </Pressable>
-        </View>
+        </Pressable>
       </ScrollView>
     </View>
   );

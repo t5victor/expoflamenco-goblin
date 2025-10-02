@@ -9,9 +9,19 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { TranslationProvider } from '@/hooks/useTranslation';
 import LoginScreen from '@/screens/LoginScreen';
+import { usePrefetchScheduler } from '@/hooks/usePrefetchScheduler';
 
 function AppContent() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  usePrefetchScheduler(
+    user
+      ? {
+          userId: user.userId,
+          token: user.token,
+        }
+      : null
+  );
 
   if (isLoading) {
     return (

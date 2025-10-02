@@ -124,7 +124,7 @@ const getWPStatsEndpoints = (siteId: string, timePeriod: string) => {
 const getErrorData = (rawError: unknown = 'Unknown error') => {
   const errorMessage = typeof rawError === 'string' ? rawError : (rawError as Error)?.message || 'Unknown error';
 
-  console.log('📊 API failed - displaying ERROR');
+  console.warn('[WPStats] returning error dataset:', errorMessage);
   return {
     isError: true,
     errorMessage,
@@ -158,7 +158,6 @@ const fetchWithTimeout = (url: string, config: any, timeout = 5000): Promise<Res
     )
   ]);
 };
-
 
 // Parse countries from visitors data
 const parseCountriesFromVisitors = (visitors: any[]) => {
@@ -418,17 +417,86 @@ export const fetchExpoFlamencoUsers = async (): Promise<ProcessedUser[]> => {
   }
 };
 
-export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') => {
-  console.log('🔗 WPStats API Config:', {
-    siteId,
-    timePeriod,
-    baseUrl: getWPStatsUrl(siteId)
+type TimePeriodKey = '24h' | '7d' | '30d' | '90d';
+
+const PERIOD_DAY_MAP: Record<TimePeriodKey, number> = {
+  '24h': 1,
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+};
+
+const getSummaryFallback = (summaryData: any, period: TimePeriodKey) => {
+  switch (period) {
+    case '24h':
+      return {
+        current: Number(summaryData?.visitors?.today) || 0,
+        previous: Number(summaryData?.visitors?.yesterday) || 0,
+      };
+    case '7d':
+      return {
+        current: Number(summaryData?.visitors?.week) || 0,
+        previous: 0,
+      };
+    case '30d':
+      return {
+        current: Number(summaryData?.visitors?.month) || 0,
+        previous: 0,
+      };
+    case '90d':
+    default:
+      return {
+        current: 0,
+        previous: 0,
+      };
+  }
+};
+
+const safeNumber = (value: any): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const sumVisitors = (series: Array<{ visitors: number }>) =>
+  series.reduce((total, item) => total + safeNumber(item.visitors), 0);
+
+const normalizeHitsData = (hitsData: any[]): Array<{ day: string; visitors: number }> => {
+  if (!Array.isArray(hitsData)) {
+    return [];
+  }
+
+  const dailyMap = new Map<string, number>();
+
+  hitsData.forEach((hit: any) => {
+    const rawDate = typeof hit?.date === 'string' ? hit.date : '';
+    if (!rawDate) {
+      return;
+    }
+    const visitors = safeNumber(hit?.visitors ?? hit?.visitor);
+    const existing = dailyMap.get(rawDate) ?? 0;
+    dailyMap.set(rawDate, existing + visitors);
   });
 
+  return Array.from(dailyMap.entries())
+    .map(([day, visitors]) => ({ day, visitors }))
+    .sort((a, b) => {
+      const aTime = Date.parse(a.day);
+      const bTime = Date.parse(b.day);
+      if (!Number.isFinite(aTime) || !Number.isFinite(bTime)) {
+        return 0;
+      }
+      return aTime - bTime;
+    });
+};
+
+const logWpStatsSummary = (siteId: string, timePeriod: TimePeriodKey, data: { todayVisitors: number; yesterdayVisitors: number; newSubscriptions: number; weeklyData: Array<{ day: string; visitors: number }> }) => {
+  const seriesCount = Array.isArray(data.weeklyData) ? data.weeklyData.length : 0;
+  console.log(`[WPStats] ${siteId}/${timePeriod} visitors=${data.todayVisitors} prev=${data.yesterdayVisitors} subs=${data.newSubscriptions} points=${seriesCount}`);
+};
+
+export const fetchSiteData = async (siteId: string, timePeriod: TimePeriodKey = '30d') => {
   try {
     const endpoints = getWPStatsEndpoints(siteId, timePeriod);
-    
-    console.log('📡 Making WPStats API calls with 5s timeout...');
 
     const timeoutMs = timePeriod === '24h' ? 5000 : 10000;
 
@@ -440,14 +508,6 @@ export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') 
       fetchWithTimeout(endpoints.referrers, wpStatsConfig, timeoutMs) as Promise<Response>,
     ]);
 
-    console.log('📊 WPStats Response status:', {
-      summary: summary.status,
-      visitors: visitors.status,
-      hits: hits.status,
-      browsers: browsers.status,
-      referrers: referrers.status
-    });
-
     if (!summary.ok || !visitors.ok || !hits.ok) {
       throw new Error(`WPStats API Error: Summary ${summary.status}, Visitors ${visitors.status}, Hits ${hits.status}`);
     }
@@ -458,104 +518,67 @@ export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') 
     const browsersData = browsers.ok ? await browsers.json() : {};
     const referrersData = referrers.ok ? await referrers.json() : [];
 
-    console.log('📋 RAW WPSTATS DATA:');
-    console.log('Today visitors:', summaryData.visitors?.today || 0);
-    console.log('Yesterday visitors:', summaryData.visitors?.yesterday || 0);
-    console.log('Week visitors:', summaryData.visitors?.week || 0);
-    console.log('Month visitors:', summaryData.visitors?.month || 0);
-
     // Parse countries from individual visitors
     const topCountries = parseCountriesFromVisitors(visitorsData);
 
-    // Calculate metrics from real WPStats data
-    const todayVisitors = summaryData.visitors?.today || 0;
-    const yesterdayVisitors = summaryData.visitors?.yesterday || 0;
-    const weekVisitors = summaryData.visitors?.week || 0;
-    const monthVisitors = summaryData.visitors?.month || 0;
-    
-    // Get current metrics based on time period
-    let currentVisitors = todayVisitors;
-    let previousVisitors = yesterdayVisitors;
-    
-    switch (timePeriod) {
-      case '24h':
-        currentVisitors = todayVisitors;
-        previousVisitors = yesterdayVisitors;
-        break;
-      case '7d':
-        currentVisitors = weekVisitors;
-        previousVisitors = Math.max(weekVisitors - 50, 0); // Approximate previous week
-        break;
-      case '30d':
-        currentVisitors = monthVisitors;
-        previousVisitors = Math.max(monthVisitors - 200, 0); // Approximate previous month
-        break;
-      case '90d':
-        currentVisitors = monthVisitors * 3;
-        previousVisitors = Math.max(monthVisitors * 2.5, 0); // Approximate previous quarter
-        break;
-    }
+    const normalizedHits = normalizeHitsData(hitsData);
+    const periodDays = PERIOD_DAY_MAP[timePeriod] ?? 30;
+
+    const recentSlice = periodDays > 0 ? normalizedHits.slice(-periodDays) : normalizedHits;
+    const previousSlice = periodDays > 0 ? normalizedHits.slice(-periodDays * 2, -periodDays) : [];
+
+    const currentFromHits = sumVisitors(recentSlice);
+    const previousFromHits = sumVisitors(previousSlice);
+
+    const summaryFallback = getSummaryFallback(summaryData, timePeriod);
+
+    const currentVisitors = currentFromHits > 0 ? currentFromHits : summaryFallback.current;
+    const previousVisitors = previousFromHits > 0 ? previousFromHits : summaryFallback.previous;
 
     const currentMetrics = {
       visitors: currentVisitors,
-      subscriptions: Math.floor(currentVisitors * 0.05), // 5% conversion rate
-      revenue: Math.floor(currentVisitors * 0.05) * 4.99 // 5% conversion * €4.99
+      subscriptions: safeNumber(summaryData?.subscriptions),
+      revenue: 0,
     };
 
-    // Get comparison data
-    const comparison = await getComparisonData(siteId, timePeriod, currentMetrics);
-
-    const hitsArray = Array.isArray(hitsData) ? hitsData : [];
-    const periodLength = (() => {
-      switch (timePeriod) {
-        case '24h':
-          return 1;
-        case '7d':
-          return 7;
-        case '30d':
-          return 30;
-        case '90d':
-          return 90;
-        default:
-          return hitsArray.length;
-      }
-    })();
-
-    const trimmedHits = periodLength > 0 ? hitsArray.slice(-periodLength) : hitsArray;
-
-    const dailySeries = trimmedHits.map((hit: any) => ({
-      day: typeof hit?.date === 'string' ? hit.date : '',
-      visitors: Number(hit?.visitors ?? hit?.visitor ?? 0),
+    const dailySeries = recentSlice.map((hit) => ({
+      day: hit.day,
+      visitors: safeNumber(hit.visitors),
     }));
+
+    const comparison = await getComparisonData(siteId, timePeriod, currentMetrics);
 
     const calculatedData = {
       isError: false,
       errorMessage: null,
       todayVisitors: currentVisitors,
       yesterdayVisitors: previousVisitors,
-      newSubscriptions: currentMetrics.subscriptions,
-      totalSubscriptions: summaryData.total_users || 0,
-      monthlyRevenue: currentMetrics.revenue,
-      activeMembers: summaryData.total_users || 0,
-      conversionRate: ((currentMetrics.subscriptions / currentVisitors) * 100).toFixed(1),
-      avgSessionTime: 'ERROR', // Not available from WPStats
+      newSubscriptions: safeNumber(summaryData?.subscriptions),
+      totalSubscriptions: safeNumber(summaryData?.total_users),
+      monthlyRevenue: 0,
+      activeMembers: safeNumber(summaryData?.total_users),
+      conversionRate:
+        currentVisitors > 0 && currentMetrics.subscriptions > 0
+          ? ((currentMetrics.subscriptions / currentVisitors) * 100).toFixed(1)
+          : '0.0',
+      avgSessionTime: 0,
       weeklyData: dailySeries,
-      previousWeekData: [],
+      previousWeekData: previousSlice.map((hit) => ({
+        day: hit.day,
+        visitors: safeNumber(hit.visitors),
+      })),
       timePeriod,
       comparison,
       topCountries,
       browsers: browsersData,
-      referrers: referrersData.slice(0, 5),
+      referrers: Array.isArray(referrersData) ? referrersData.slice(0, 5) : [],
     };
 
-    console.log('🔢 WPSTATS DASHBOARD DATA:');
-    console.log('Current visitors:', calculatedData.todayVisitors);
-    console.log('Subscriptions:', calculatedData.newSubscriptions);
-    console.log('Revenue:', calculatedData.monthlyRevenue);
-    
+    logWpStatsSummary(siteId, timePeriod, calculatedData);
+
     return calculatedData;
   } catch (error: any) {
-    console.error('🚨 WPStats API Error - displaying ERROR:', error?.message || error);
+    console.error(`[WPStats] ${siteId}/${timePeriod} failed:`, error?.message || error);
     return getErrorData(error);
   }
 };

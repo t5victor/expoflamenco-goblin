@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -8,9 +8,10 @@ import { Sidebar } from '@/components/Sidebar';
 import { Feather } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { authorAnalyticsService } from '@/services/authorAnalytics';
+import { dataCacheKeys, getCachedData, setCachedData } from '@/services/dataCache';
+import { addPrefetchListener } from '@/services/prefetchManager';
 
 const { width: screenWidth } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
 const isMobile = screenWidth < 768;
 
 interface ArticleWithAnalytics {
@@ -29,53 +30,119 @@ export default function ArticlesScreen() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const isDark = colorScheme === 'dark';
+  const [articlesSource, setArticlesSource] = useState<ArticleWithAnalytics[]>([]);
   const [articles, setArticles] = useState<ArticleWithAnalytics[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<'views' | 'date' | 'engagement'>('views');
+  const userInteractionRef = useRef(false);
 
-  useEffect(() => {
-    if (user) {
-      loadArticles();
-    }
-  }, [user, sortBy]);
-
-  const loadArticles = async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      const articlesWithAnalytics = await authorAnalyticsService.getAuthorPostsWithAnalytics(
-        user.userId,
-        user.token
-      );
-
-      // Sort articles based on selected criteria
-      const sortedArticles = [...articlesWithAnalytics].sort((a, b) => {
-        switch (sortBy) {
-          case 'views':
-            return b.views - a.views;
-          case 'date':
-            return new Date(b.date).getTime() - new Date(a.date).getTime();
-          case 'engagement':
-            return b.engagement - a.engagement;
-          default:
-            return b.views - a.views;
-        }
-      });
-
-      setArticles(sortedArticles);
-    } catch (error) {
-      console.error('Error loading articles:', error);
-    } finally {
-      setLoading(false);
-    }
+  const markUserInteraction = () => {
+    userInteractionRef.current = true;
   };
 
+  const sortArticles = useCallback((items: ArticleWithAnalytics[]) => {
+    return [...items].sort((a, b) => {
+      switch (sortBy) {
+        case 'views':
+          return b.views - a.views;
+        case 'date':
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        case 'engagement':
+          return b.engagement - a.engagement;
+        default:
+          return b.views - a.views;
+      }
+    });
+  }, [sortBy]);
+
+  const loadArticles = useCallback(
+    async ({ allowNetwork = true, silent = false }: { allowNetwork?: boolean; silent?: boolean } = {}) => {
+      if (!user) return;
+
+      const cacheKey = dataCacheKeys.authorArticles(user.userId);
+      const cacheResult = await getCachedData<ArticleWithAnalytics[]>(cacheKey);
+      const cachedArticles = cacheResult.data ?? [];
+      const hasCached = cachedArticles.length > 0;
+
+      if (hasCached) {
+        setArticlesSource(cachedArticles);
+        setArticles(sortArticles(cachedArticles));
+        if (!silent) {
+          setLoading(false);
+        }
+      }
+
+      if (!hasCached && !silent) {
+        setLoading(true);
+      }
+
+      const needsFetch = allowNetwork && (!hasCached || cacheResult.isExpired);
+
+      if (!needsFetch) {
+        return;
+      }
+
+      try {
+        const articlesWithAnalytics = await authorAnalyticsService.getAuthorPostsWithAnalytics(
+          user.userId,
+          user.token
+        );
+
+        setArticlesSource(articlesWithAnalytics);
+        setArticles(sortArticles(articlesWithAnalytics));
+        await setCachedData(cacheKey, articlesWithAnalytics);
+        if (!silent) {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error loading articles:', error);
+        if (!hasCached) {
+          setArticlesSource([]);
+          setArticles([]);
+          if (!silent) {
+            setLoading(false);
+          }
+        }
+      }
+    },
+    [sortArticles, user]
+  );
+
+  useEffect(() => {
+    const unsubscribe = addPrefetchListener(() => {
+      loadArticles({ allowNetwork: false, silent: true });
+    });
+
+    return unsubscribe;
+  }, [loadArticles]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const fromInteraction = userInteractionRef.current;
+    const allowNetwork = !fromInteraction;
+    const silent = fromInteraction;
+
+    loadArticles({ allowNetwork, silent });
+
+    if (fromInteraction) {
+      userInteractionRef.current = false;
+    }
+  }, [loadArticles, user]);
+
+  useEffect(() => {
+    setArticles(sortArticles(articlesSource));
+  }, [articlesSource, sortArticles]);
+
   const onRefresh = async () => {
+    markUserInteraction();
     setRefreshing(true);
-    await loadArticles();
+    await loadArticles({ allowNetwork: false, silent: true });
     setRefreshing(false);
+    userInteractionRef.current = false;
   };
 
   if (loading) {
@@ -165,7 +232,10 @@ export default function ArticlesScreen() {
                           shadowColor: '#DA2B1F',
                         }
                       ]}
-                      onPress={() => setSortBy(sort.id as any)}
+                      onPress={() => {
+                        markUserInteraction();
+                        setSortBy(sort.id as any);
+                      }}
                     >
                       <Feather
                         name={sort.icon as any}

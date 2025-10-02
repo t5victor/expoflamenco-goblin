@@ -11,7 +11,6 @@ import { Stack } from "expo-router";
 
 export default function WelcomeScreen() {
   const router = useRouter();
-
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />  
