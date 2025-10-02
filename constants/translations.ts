@@ -48,6 +48,8 @@ export const translations = {
     dashboard: {
       title: 'Analytics Dashboard',
       subtitle: 'Your performance metrics on Expoflamenco Revista',
+      serverOfflineTitle: 'Analytics temporarily unavailable',
+      serverOfflineMessage: "We can't reach the analytics server right now. Please try again shortly.",
       welcome: 'Welcome',
       totalViews: 'Total Views',
       viewsTotal: 'Total views',
@@ -165,6 +167,16 @@ export const translations = {
       underDevelopmentMessage: 'The Profile section is currently undergoing work and will be available soon.',
     },
 
+    // Analytics
+    analytics: {
+      noChartData: 'WP Statistics API not configured',
+      trafficAnalytics: 'Traffic Analytics',
+      realTimeInsights: 'Real-time visitor insights',
+      peakVisitors: 'Peak Visitors',
+      dailyAverage: 'Daily Average',
+      totalPeriod: 'Total Period',
+    },
+
   },
 
   es: {
@@ -213,6 +225,8 @@ export const translations = {
     dashboard: {
       title: 'Panel de Analytics',
       subtitle: 'Tus métricas de rendimiento en Expoflamenco Revista',
+      serverOfflineTitle: 'Analíticas temporalmente no disponibles',
+      serverOfflineMessage: 'No podemos conectar con el servidor de analíticas. Inténtalo de nuevo en unos minutos.',
       welcome: 'Bienvenido',
       totalViews: 'Vistas Totales',
       viewsTotal: 'Vistas totales',
@@ -328,6 +342,16 @@ export const translations = {
     profile: {
       underDevelopmentTitle: 'Sección en Desarrollo',
       underDevelopmentMessage: 'La sección de Perfil está actualmente en desarrollo y estará disponible pronto.',
+    },
+
+    // Analytics
+    analytics: {
+      noChartData: 'API de WP Statistics no configurada',
+      trafficAnalytics: 'Análisis de Tráfico',
+      realTimeInsights: 'Información de visitantes en tiempo real',
+      peakVisitors: 'Pico de Visitantes',
+      dailyAverage: 'Promedio Diario',
+      totalPeriod: 'Total del Período',
     },
 
   },

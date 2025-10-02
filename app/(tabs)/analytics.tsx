@@ -1,21 +1,23 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Sidebar } from '@/components/Sidebar';
+import { LineChart } from 'react-native-chart-kit';
 import { Feather } from '@expo/vector-icons';
+import { apiService } from '@/services/api';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 const mockAnalyticsData = {
-  weeklyVisitors: [
-    { day: 'Mon', visitors: 3245, pageViews: 8234, bounceRate: 45.2 },
-    { day: 'Tue', visitors: 4312, pageViews: 9123, bounceRate: 42.1 },
-    { day: 'Wed', visitors: 3878, pageViews: 7654, bounceRate: 48.3 },
-    { day: 'Thu', visitors: 5396, pageViews: 11234, bounceRate: 38.9 },
-    { day: 'Fri', visitors: 4442, pageViews: 9876, bounceRate: 41.7 },
-    { day: 'Sat', visitors: 2018, pageViews: 4567, bounceRate: 52.1 },
-    { day: 'Sun', visitors: 1756, pageViews: 3890, bounceRate: 55.3 }
+  weeklyData: [
+    { day: 'Mon', visitors: 3245 },
+    { day: 'Tue', visitors: 4312 },
+    { day: 'Wed', visitors: 3878 },
+    { day: 'Thu', visitors: 5396 },
+    { day: 'Fri', visitors: 4442 },
+    { day: 'Sat', visitors: 2018 },
+    { day: 'Sun', visitors: 1756 }
   ],
   topPages: [
     { page: '/flamenco-courses', views: 12470, avgTime: '4:32', exitRate: 23.4 },
@@ -38,7 +40,39 @@ export default function AnalyticsScreen() {
   const isDark = colorScheme === 'dark';
   const isDesktop = screenWidth >= 768;
 
-  const maxVisitors = Math.max(...mockAnalyticsData.weeklyVisitors.map(d => d.visitors));
+  // State for time period and chart data
+  const [selectedTimePeriod, setSelectedTimePeriod] = useState('7d');
+  const [chartData, setChartData] = useState<any>(mockAnalyticsData);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const timePeriods = [
+    { key: '24h', label: '24H', icon: 'clock' },
+    { key: '7d', label: '7D', icon: 'calendar' },
+    { key: '30d', label: '30D', icon: 'calendar' },
+    { key: '90d', label: '90D', icon: 'calendar' },
+  ];
+
+  // Fetch chart data when time period changes
+  useEffect(() => {
+    fetchChartData();
+  }, [selectedTimePeriod]);
+
+  const fetchChartData = async () => {
+    try {
+      setIsLoading(true);
+      // In a real app, you'd get the actual token and site ID
+      // For now, we'll use mock data that's enhanced
+      const data = await apiService.getDashboardData('revista', selectedTimePeriod, 'mock-token');
+      setChartData(data);
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+      // Fallback to mock data
+      setChartData(mockAnalyticsData);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   return (
     <SafeAreaView style={[
@@ -69,57 +103,157 @@ export default function AnalyticsScreen() {
             </View>
 
             <View style={styles.dashboardGrid}>
-              {/* Weekly Traffic Chart */}
+              {/* Enhanced Traffic Chart with Time Period Selector */}
               <View style={[
-                styles.chartCard,
-                { 
+                styles.enhancedChartCard,
+                {
                   backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
                   borderColor: isDark ? '#374151' : '#E5E7EB'
                 }
               ]}>
-                <View style={styles.chartHeader}>
-                  <Text style={[
-                    styles.chartTitle,
-                    { color: isDark ? '#FFFFFF' : '#111827' }
-                  ]}>
-                    Weekly Traffic Breakdown
-                  </Text>
+                <View style={styles.enhancedChartHeader}>
+                  <View style={styles.chartTitleContainer}>
+                    <Text style={[
+                      styles.chartTitle,
+                      { color: isDark ? '#FFFFFF' : '#111827' }
+                    ]}>
+                      Traffic Analytics
+                    </Text>
+                    <Text style={[
+                      styles.chartSubtitle,
+                      { color: isDark ? '#9CA3AF' : '#6B7280' }
+                    ]}>
+                      Real-time visitor insights
+                    </Text>
+                  </View>
                   <Feather name="more-horizontal" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
                 </View>
-                
-                <View style={styles.chart}>
-                  {mockAnalyticsData.weeklyVisitors.map((item, index) => (
-                    <View key={index} style={styles.barContainer}>
-                      <Text style={[
-                        styles.barValue,
-                        { color: isDark ? '#9CA3AF' : '#6B7280' }
-                      ]}>
-                        {(item.visitors / 1000).toFixed(1)}k
-                      </Text>
-                      <View 
-                        style={[
-                          styles.bar,
-                          { 
-                            height: (item.visitors / maxVisitors) * 100,
-                            backgroundColor: '#3B82F6'
-                          }
-                        ]} 
+
+                {/* Time Period Selector */}
+                <View style={styles.timePeriodSelector}>
+                  {timePeriods.map((period) => (
+                    <TouchableOpacity
+                      key={period.key}
+                      style={[
+                        styles.timePeriodButton,
+                        {
+                          backgroundColor: selectedTimePeriod === period.key
+                            ? '#DA2B1F'
+                            : (isDark ? '#374151' : '#F3F4F6'),
+                          borderColor: selectedTimePeriod === period.key
+                            ? '#DA2B1F'
+                            : (isDark ? '#4B5563' : '#E5E7EB'),
+                        }
+                      ]}
+                      onPress={() => setSelectedTimePeriod(period.key)}
+                    >
+                      <Feather
+                        name={period.icon as any}
+                        size={14}
+                        color={selectedTimePeriod === period.key ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#6B7280')}
                       />
                       <Text style={[
-                        styles.barLabel,
-                        { color: isDark ? '#9CA3AF' : '#6B7280' }
+                        styles.timePeriodText,
+                        {
+                          color: selectedTimePeriod === period.key ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#374151')
+                        }
                       ]}>
-                        {item.day}
+                        {period.label}
                       </Text>
-                      <Text style={[
-                        styles.bounceRate,
-                        { color: isDark ? '#EF4444' : '#DC2626' }
-                      ]}>
-                        {item.bounceRate}%
-                      </Text>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
+
+                {/* Enhanced Chart */}
+                <View style={styles.chartContainer}>
+                  {chartData && chartData.weeklyData ? (
+                    <LineChart
+                      data={{
+                        labels: chartData.weeklyData.map((item: any) => item.day.substring(0, 3)),
+                        datasets: [
+                          {
+                            data: chartData.weeklyData.map((item: any) => item.visitors),
+                            color: (opacity = 1) => isDark ? `rgba(218, 43, 31, ${opacity})` : `rgba(218, 43, 31, ${opacity})`,
+                            strokeWidth: 3,
+                          },
+                        ],
+                      }}
+                      width={screenWidth - 80}
+                      height={220}
+                      chartConfig={{
+                        backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+                        backgroundGradientFrom: isDark ? '#1F1F1F' : '#FFFFFF',
+                        backgroundGradientTo: isDark ? '#1F1F1F' : '#FFFFFF',
+                        decimalPlaces: 0,
+                        color: (opacity = 1) => isDark ? `rgba(218, 43, 31, ${opacity})` : `rgba(218, 43, 31, ${opacity})`,
+                        labelColor: (opacity = 1) => isDark ? `rgba(156, 163, 175, ${opacity})` : `rgba(107, 114, 128, ${opacity})`,
+                        style: {
+                          borderRadius: 16,
+                        },
+                        propsForDots: {
+                          r: '5',
+                          strokeWidth: '2',
+                          stroke: '#DA2B1F',
+                        },
+                        propsForBackgroundLines: {
+                          strokeDasharray: '3,3',
+                          stroke: isDark ? '#374151' : '#E5E7EB',
+                        },
+                      }}
+                      bezier
+                      style={{
+                        marginVertical: 8,
+                        borderRadius: 16,
+                      }}
+                      withDots={true}
+                      withShadow={false}
+                      withVerticalLines={false}
+                      withHorizontalLines={true}
+                      withVerticalLabels={true}
+                      withHorizontalLabels={true}
+                      formatYLabel={(value) => `${(parseInt(value) / 1000).toFixed(1)}k`}
+                    />
+                  ) : (
+                    <View style={styles.loadingContainer}>
+                      <Text style={[
+                        styles.loadingText,
+                        { color: isDark ? '#9CA3AF' : '#6B7280' }
+                      ]}>
+                        {isLoading ? 'Loading chart data...' : 'No data available'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Chart Stats */}
+                {chartData && chartData.weeklyData && (
+                  <View style={[styles.chartStats, { borderTopColor: isDark ? '#374151' : '#E5E7EB' }]}>
+                    <View style={styles.statItem}>
+                      <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+                        {Math.max(...chartData.weeklyData.map((item: any) => item.visitors)).toLocaleString()}
+                      </Text>
+                      <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        Peak Visitors
+                      </Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+                        {Math.round(chartData.weeklyData.reduce((sum: number, item: any) => sum + item.visitors, 0) / chartData.weeklyData.length).toLocaleString()}
+                      </Text>
+                      <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        Daily Average
+                      </Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+                        {chartData.weeklyData.reduce((sum: number, item: any) => sum + item.visitors, 0).toLocaleString()}
+                      </Text>
+                      <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                        Total Period
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </View>
 
               {/* Analytics Grid */}
@@ -261,52 +395,83 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 24,
   },
-  chartCard: {
+  // Enhanced Chart Styles
+  enhancedChartCard: {
     padding: 24,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     marginBottom: 24,
   },
-  chartHeader: {
+  enhancedChartHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 20,
   },
+  chartTitleContainer: {
+    flex: 1,
+  },
   chartTitle: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  chartSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  timePeriodSelector: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+  },
+  timePeriodButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+    minWidth: 60,
+    justifyContent: 'center',
+  },
+  timePeriodText: {
+    fontSize: 12,
     fontWeight: '600',
   },
-  chart: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 140,
-    paddingTop: 20,
+  chartContainer: {
+    alignItems: 'center',
+    marginVertical: 8,
   },
-  barContainer: {
+  loadingContainer: {
+    height: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  chartStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+  },
+  statItem: {
     alignItems: 'center',
     flex: 1,
   },
-  bar: {
-    width: 24,
-    borderRadius: 4,
-    marginVertical: 4,
-  },
-  barLabel: {
-    fontSize: 11,
-    marginTop: 8,
-    fontWeight: '500',
-  },
-  barValue: {
-    fontSize: 10,
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  bounceRate: {
-    fontSize: 9,
-    marginTop: 4,
+  statValue: {
+    fontSize: 16,
     fontWeight: '600',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   analyticsGrid: {
     flexDirection: 'row',

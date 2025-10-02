@@ -121,9 +121,13 @@ const getWPStatsEndpoints = (siteId: string, timePeriod: string) => {
 };
 
 // Error data when API fails
-const getErrorData = () => {
+const getErrorData = (rawError: unknown = 'Unknown error') => {
+  const errorMessage = typeof rawError === 'string' ? rawError : (rawError as Error)?.message || 'Unknown error';
+
   console.log('📊 API failed - displaying ERROR');
   return {
+    isError: true,
+    errorMessage,
     todayVisitors: 'ERROR',
     yesterdayVisitors: 'ERROR',
     newSubscriptions: 'ERROR',
@@ -426,12 +430,14 @@ export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') 
     
     console.log('📡 Making WPStats API calls with 5s timeout...');
 
+    const timeoutMs = timePeriod === '24h' ? 5000 : 10000;
+
     const [summary, visitors, hits, browsers, referrers] = await Promise.all([
-      fetchWithTimeout(endpoints.summary, wpStatsConfig, 5000) as Promise<Response>,
-      fetchWithTimeout(endpoints.visitors, wpStatsConfig, 5000) as Promise<Response>,
-      fetchWithTimeout(endpoints.hits, wpStatsConfig, 5000) as Promise<Response>,
-      fetchWithTimeout(endpoints.browsers, wpStatsConfig, 5000) as Promise<Response>,
-      fetchWithTimeout(endpoints.referrers, wpStatsConfig, 5000) as Promise<Response>,
+      fetchWithTimeout(endpoints.summary, wpStatsConfig, timeoutMs) as Promise<Response>,
+      fetchWithTimeout(endpoints.visitors, wpStatsConfig, timeoutMs) as Promise<Response>,
+      fetchWithTimeout(endpoints.hits, wpStatsConfig, timeoutMs) as Promise<Response>,
+      fetchWithTimeout(endpoints.browsers, wpStatsConfig, timeoutMs) as Promise<Response>,
+      fetchWithTimeout(endpoints.referrers, wpStatsConfig, timeoutMs) as Promise<Response>,
     ]);
 
     console.log('📊 WPStats Response status:', {
@@ -499,7 +505,32 @@ export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') 
     // Get comparison data
     const comparison = await getComparisonData(siteId, timePeriod, currentMetrics);
 
+    const hitsArray = Array.isArray(hitsData) ? hitsData : [];
+    const periodLength = (() => {
+      switch (timePeriod) {
+        case '24h':
+          return 1;
+        case '7d':
+          return 7;
+        case '30d':
+          return 30;
+        case '90d':
+          return 90;
+        default:
+          return hitsArray.length;
+      }
+    })();
+
+    const trimmedHits = periodLength > 0 ? hitsArray.slice(-periodLength) : hitsArray;
+
+    const dailySeries = trimmedHits.map((hit: any) => ({
+      day: typeof hit?.date === 'string' ? hit.date : '',
+      visitors: Number(hit?.visitors ?? hit?.visitor ?? 0),
+    }));
+
     const calculatedData = {
+      isError: false,
+      errorMessage: null,
       todayVisitors: currentVisitors,
       yesterdayVisitors: previousVisitors,
       newSubscriptions: currentMetrics.subscriptions,
@@ -508,10 +539,7 @@ export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') 
       activeMembers: summaryData.total_users || 0,
       conversionRate: ((currentMetrics.subscriptions / currentVisitors) * 100).toFixed(1),
       avgSessionTime: 'ERROR', // Not available from WPStats
-      weeklyData: hitsData.slice(-7).map((hit: any) => ({
-        day: hit.date?.substring(0, 3) || 'N/A',
-        visitors: parseInt(hit.visitor) || 0
-      })),
+      weeklyData: dailySeries,
       previousWeekData: [],
       timePeriod,
       comparison,
@@ -528,6 +556,6 @@ export const fetchSiteData = async (siteId: string, timePeriod: string = '30d') 
     return calculatedData;
   } catch (error: any) {
     console.error('🚨 WPStats API Error - displaying ERROR:', error?.message || error);
-    return getErrorData();
+    return getErrorData(error);
   }
 };

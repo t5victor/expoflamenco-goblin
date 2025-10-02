@@ -6,15 +6,145 @@ import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageDropdown } from '@/components/LanguageDropdown';
+import { LineChart } from 'react-native-chart-kit';
 import { Feather } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { authorAnalyticsService, AuthorAnalytics } from '@/services/authorAnalytics';
+import { fetchSiteData } from '@/services/api';
 
 // Using AuthorAnalytics interface from authorAnalytics service
 type DashboardData = AuthorAnalytics;
 
 const { width: screenWidth } = Dimensions.get('window');
 const isMobile = screenWidth < 768;
+
+
+interface TrafficSeriesPoint {
+  rawLabel: string;
+  visitors: number;
+  date: Date | null;
+  index: number;
+}
+
+interface DisplaySeriesPoint {
+  label: string;
+  visitors: number;
+}
+
+interface ChartDataState {
+  rawSeries: TrafficSeriesPoint[];
+  displaySeries: DisplaySeriesPoint[];
+}
+
+const parseWpDateLabel = (label: string): Date | null => {
+  if (!label) return null;
+
+  const now = new Date();
+  let parsed = new Date(`${label} ${now.getFullYear()}`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    parsed = new Date(label);
+  }
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+  if (parsed.getTime() - now.getTime() > ninetyDaysMs) {
+    parsed.setFullYear(parsed.getFullYear() - 1);
+  }
+
+  return parsed;
+};
+
+const buildDisplaySeries = (series: TrafficSeriesPoint[], timeFilter: string): DisplaySeriesPoint[] => {
+  if (!Array.isArray(series) || series.length === 0) {
+    return [];
+  }
+
+  const formatPointLabel = (point: TrafficSeriesPoint): string => {
+    if (point.date) {
+      return point.date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+    }
+    return point.rawLabel;
+  };
+
+  const formatRangeLabel = (start: TrafficSeriesPoint, end: TrafficSeriesPoint): string => {
+    if (!start || !end) return '';
+
+    if (start.date && end.date) {
+      const startDay = start.date.getDate();
+      const startMonth = start.date.toLocaleDateString('es-ES', { month: 'short' });
+      const endDay = end.date.getDate();
+      const endMonth = end.date.toLocaleDateString('es-ES', { month: 'short' });
+
+      if (startMonth === endMonth) {
+        return `${startDay}-${endDay}\n${startMonth}`;
+      }
+
+      return `${startDay} ${startMonth}\n${endDay} ${endMonth}`;
+    }
+
+    const startLabel = formatPointLabel(start);
+    const endLabel = formatPointLabel(end);
+    if (startLabel === endLabel) {
+      return startLabel;
+    }
+
+    return `${startLabel}\n${endLabel}`;
+  };
+
+  const buildBuckets = (bucketCount: number): DisplaySeriesPoint[] => {
+    const safeBuckets = Math.max(1, bucketCount);
+    const groupSize = Math.ceil(series.length / safeBuckets);
+    const buckets: DisplaySeriesPoint[] = [];
+
+    for (let i = 0; i < series.length; i += groupSize) {
+      const chunk = series.slice(i, i + groupSize);
+      if (chunk.length === 0) continue;
+
+      const avgVisitors = Math.round(
+        chunk.reduce((total, point) => total + point.visitors, 0) / chunk.length
+      );
+
+      buckets.push({
+        label: formatRangeLabel(chunk[0], chunk[chunk.length - 1]),
+        visitors: avgVisitors,
+      });
+    }
+
+    return buckets;
+  };
+
+  if (timeFilter === '30d') {
+    return buildBuckets(4);
+  }
+
+  if (timeFilter === '90d') {
+    return buildBuckets(6);
+  }
+
+  const maxPoints = timeFilter === '24h' ? Math.min(4, series.length) : Math.min(7, series.length);
+  if (series.length <= maxPoints) {
+    return series.map((point) => ({
+      label: formatPointLabel(point),
+      visitors: point.visitors,
+    }));
+  }
+
+  const step = (series.length - 1) / (Math.max(1, maxPoints - 1));
+  const sampled: DisplaySeriesPoint[] = [];
+  for (let i = 0; i < maxPoints; i++) {
+    const index = Math.round(i * step);
+    const point = series[Math.min(series.length - 1, Math.max(0, index))];
+    sampled.push({
+      label: formatPointLabel(point),
+      visitors: point.visitors,
+    });
+  }
+  return sampled;
+};
 
 
 interface MetricCardProps {
@@ -57,7 +187,7 @@ const PostsCard: React.FC<PostsCardProps> = ({
             styles.iconContainer,
             { backgroundColor: '#8B5CF6' + '15' }
           ]}>
-            <IconSymbol name="doc.text.fill" size={18} color="#8B5CF6" />
+            <IconSymbol name="doc" size={18} color="#8B5CF6" />
           </View>
           <Text style={[
             styles.cardTitle,
@@ -135,7 +265,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
             styles.iconContainer,
             { backgroundColor: accentColor + '15' }
           ]}>
-            <IconSymbol name={icon} size={18} color={accentColor} />
+            <Feather name={icon} size={18} color={accentColor} />
           </View>
           <Text style={[
             styles.cardTitle,
@@ -215,6 +345,11 @@ export default function AuthorDashboard() {
   const [timeFilter, setTimeFilter] = useState('30d');
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<ChartDataState | null>(null);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [hasAuthorError, setHasAuthorError] = useState(false);
+  const [hasMetricsError, setHasMetricsError] = useState(false);
+  const [selectedSite] = useState('com');
   const colorScheme = useColorScheme();
   const { t } = useTranslation();
   const { user, logout } = useAuth();
@@ -226,6 +361,10 @@ export default function AuthorDashboard() {
       loadAuthorData();
     }
   }, [user, timeFilter]);
+
+  useEffect(() => {
+    loadChartData();
+  }, [timeFilter, selectedSite]);
 
   const getDateRangeFromTimeFilter = (timeFilter: string) => {
     const now = new Date();
@@ -274,20 +413,63 @@ export default function AuthorDashboard() {
         dateRange
       );
       setData(authorData);
+      setHasAuthorError(false);
     } catch (error) {
       console.error('Author analytics error:', (error as Error).message);
       // Set data to null on error - will show ERROR in UI
       setData(null);
+      setHasAuthorError(true);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadChartData = async () => {
+    try {
+      setChartLoading(true);
+
+      const siteMetrics = await fetchSiteData(selectedSite, timeFilter);
+
+      if (siteMetrics?.isError) {
+        setHasMetricsError(true);
+        setChartData(null);
+        return;
+      }
+
+      setHasMetricsError(false);
+
+      const normalizedWeeklyData: TrafficSeriesPoint[] = Array.isArray(siteMetrics?.weeklyData)
+        ? siteMetrics.weeklyData.map((item: any, index: number) => {
+            const rawLabel = typeof item?.day === 'string' ? item.day : '';
+            const visitors = Number(item?.visitors ?? item?.visitor ?? 0) || 0;
+            return {
+              rawLabel,
+              visitors,
+              date: parseWpDateLabel(rawLabel),
+              index,
+            };
+          })
+        : [];
+
+      setChartData({
+        rawSeries: normalizedWeeklyData,
+        displaySeries: buildDisplaySeries(normalizedWeeklyData, timeFilter),
+      });
+    } catch (error) {
+      console.error('Chart data fetch error:', error);
+      setChartData(null);
+      setHasMetricsError(true);
+    } finally {
+      setChartLoading(false);
     }
   };
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     await loadAuthorData();
+    await loadChartData();
     setRefreshing(false);
-  }, [user, timeFilter]);
+  }, [user, timeFilter, selectedSite]);
 
   const timeFilters = [
     { id: '24h', label: '24h' },
@@ -302,6 +484,8 @@ export default function AuthorDashboard() {
     { id: 'paid', label: t('vipSubscriptions') },
   ];
 
+  const showOffline = hasAuthorError || hasMetricsError;
+
   if (loading) {
     return (
       <SafeAreaView style={[
@@ -312,6 +496,51 @@ export default function AuthorDashboard() {
           <Text style={[styles.loadingText, { color: isDark ? '#FFFFFF' : '#111827' }]}>
             {t('loading')}...
           </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!loading && showOffline) {
+    return (
+      <SafeAreaView style={[
+        styles.container,
+        { backgroundColor: isDark ? '#111827' : '#F9FAFB' }
+      ]}>
+        <View style={[styles.offlineContainer, { backgroundColor: isDark ? '#111827' : '#F9FAFB' }]}>
+          <Feather
+            name="wifi-off"
+            size={48}
+            color={isDark ? '#F9FAFB' : '#111827'}
+            style={styles.offlineIcon}
+          />
+          <Text style={[
+            styles.offlineTitle,
+            { color: isDark ? '#FFFFFF' : '#111827' }
+          ]}>
+            {t('dashboard.serverOfflineTitle')}
+          </Text>
+          <Text style={[
+            styles.offlineMessage,
+            { color: isDark ? '#9CA3AF' : '#6B7280' }
+          ]}>
+            {t('dashboard.serverOfflineMessage')}
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.offlineButton,
+              {
+                backgroundColor: refreshing ? '#9CA3AF' : '#DA2B1F',
+                opacity: refreshing ? 0.7 : 1,
+              }
+            ]}
+            onPress={onRefresh}
+            disabled={refreshing}
+          >
+            <Text style={styles.offlineButtonText}>
+              {refreshing ? t('articles.refreshing') : t('refresh')}
+            </Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -331,6 +560,15 @@ export default function AuthorDashboard() {
       </SafeAreaView>
     );
   }
+
+  const trafficSeries = Array.isArray(chartData?.displaySeries) ? chartData.displaySeries : [];
+  const rawSeries = Array.isArray(chartData?.rawSeries) ? chartData.rawSeries : [];
+  const formattedLabels = trafficSeries.map((item: DisplaySeriesPoint) => item?.label || '');
+
+  const trafficValues = trafficSeries.map((item: DisplaySeriesPoint) => Number(item.visitors) || 0);
+  const rawValues = rawSeries.map((item: TrafficSeriesPoint) => Number(item.visitors) || 0);
+  const chartHasData = trafficSeries.length > 0;
+  const statsHasData = rawValues.length > 0;
 
   return (
     <SafeAreaView style={[
@@ -434,8 +672,144 @@ export default function AuthorDashboard() {
               </View>
             </View>
 
-            {/* Main Dashboard Grid */}
+            {/* Enhanced Traffic Chart - FIRST THING ON DASHBOARD */}
             <View style={[styles.dashboardGrid, isMobile && styles.mobileDashboardGrid]}>
+              {/* Enhanced Traffic Chart */}
+              <View style={[
+                styles.enhancedChartCard,
+                {
+                  backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+                  borderColor: isDark ? '#374151' : '#E5E7EB',
+                  marginBottom: 32,
+                }
+              ]}>
+                <View style={styles.enhancedChartHeader}>
+                  <View style={styles.chartTitleContainer}>
+                    <Text style={[
+                      styles.enhancedChartTitle,
+                      { color: isDark ? '#FFFFFF' : '#111827' }
+                    ]}>
+                      {t('analytics.trafficAnalytics')}
+                    </Text>
+                    <Text style={[
+                      styles.enhancedChartSubtitle,
+                      { color: isDark ? '#9CA3AF' : '#6B7280' }
+                    ]}>
+                      {t('analytics.realTimeInsights')}
+                    </Text>
+                  </View>
+                  <Feather name="more-horizontal" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                </View>
+
+
+                {/* Enhanced Chart - Always Visible */}
+                <View style={styles.chartContainer}>
+                  {chartLoading ? (
+                    <View style={styles.loadingContainer}>
+                      <Text style={[
+                        styles.loadingText,
+                        { color: isDark ? '#9CA3AF' : '#6B7280' }
+                      ]}>
+                        {t('loading')}...
+                      </Text>
+                    </View>
+                  ) : chartHasData ? (
+                    <LineChart
+                      data={{
+                        labels: formattedLabels,
+                        datasets: [
+                          {
+                            data: trafficValues,
+                            color: (opacity = 1) => isDark ? `rgba(218, 43, 31, ${opacity})` : `rgba(218, 43, 31, ${opacity})`,
+                            strokeWidth: 3,
+                          },
+                        ],
+                      }}
+                      width={screenWidth - 80}
+                      height={220}
+                      chartConfig={{
+                        backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+                        backgroundGradientFrom: isDark ? '#1F1F1F' : '#FFFFFF',
+                        backgroundGradientTo: isDark ? '#1F1F1F' : '#FFFFFF',
+                        decimalPlaces: 0,
+                        color: (opacity = 1) => isDark ? `rgba(218, 43, 31, ${opacity})` : `rgba(218, 43, 31, ${opacity})`,
+                        labelColor: (opacity = 1) => isDark ? `rgba(156, 163, 175, ${opacity})` : `rgba(107, 114, 128, ${opacity})`,
+                        style: {
+                          borderRadius: 16,
+                        },
+                        propsForDots: {
+                          r: '5',
+                          strokeWidth: '2',
+                          stroke: '#DA2B1F',
+                        },
+                        propsForBackgroundLines: {
+                          strokeDasharray: '3,3',
+                          stroke: isDark ? '#374151' : '#E5E7EB',
+                        },
+                      }}
+                      bezier
+                      style={{
+                        marginVertical: 8,
+                        borderRadius: 16,
+                      }}
+                      withDots={true}
+                      withShadow={false}
+                      withVerticalLines={false}
+                      withHorizontalLines={true}
+                      withVerticalLabels={true}
+                      withHorizontalLabels={true}
+                      formatYLabel={(value) => `${(parseInt(value) / 1000).toFixed(1)}k`}
+                    />
+                  ) : (
+                    <View style={styles.loadingContainer}>
+                      <Text style={[
+                        styles.loadingText,
+                        { color: isDark ? '#9CA3AF' : '#6B7280' }
+                      ]}>
+                        {t('analytics.noData') || 'No data available'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Chart Stats - Always Visible */}
+                <View style={[styles.chartStats, { borderTopColor: isDark ? '#374151' : '#E5E7EB' }]}>
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+                      {statsHasData
+                        ? Math.max(...rawValues).toLocaleString()
+                        : '0'
+                      }
+                    </Text>
+                    <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                      {t('analytics.peakVisitors')}
+                    </Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+                      {statsHasData
+                        ? Math.round(rawValues.reduce((sum: number, value: number) => sum + value, 0) / rawValues.length).toLocaleString()
+                        : '0'
+                      }
+                    </Text>
+                    <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                      {t('analytics.dailyAverage')}
+                    </Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statValue, { color: isDark ? '#FFFFFF' : '#111827' }]}>
+                      {statsHasData
+                        ? rawValues.reduce((sum: number, value: number) => sum + value, 0).toLocaleString()
+                        : '0'
+                      }
+                    </Text>
+                    <Text style={[styles.statLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+                      {t('analytics.totalPeriod')}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
               {/* Key Metrics Row */}
               <View style={[styles.metricsRow, isMobile && styles.mobileMetricsRow]}>
                 <MetricCard
@@ -444,7 +818,7 @@ export default function AuthorDashboard() {
                   subtitle={`${t('dashboard.postsTotal')} (${t(`timePeriods.${timeFilter}`)})`}
                   trend={data.comparison?.posts.trend || 'neutral'}
                   trendValue={data.comparison?.posts.percentage || '0%'}
-                  icon="doc.text.fill"
+                  icon="file-text"
                   size="medium"
                   accentColor="#3B82F6"
                 />
@@ -461,7 +835,7 @@ export default function AuthorDashboard() {
                   subtitle={t('dashboard.avgViewsDesc')}
                   trend={data.comparison?.engagement.trend || 'neutral'}
                   trendValue={data.comparison?.engagement.percentage || '0%'}
-                  icon="trending.up"
+                  icon="trending-up"
                   size="medium"
                   accentColor="#10B981"
                 />
@@ -472,7 +846,7 @@ export default function AuthorDashboard() {
                   subtitle={t('dashboard.topPostDesc')}
                   trend="up"
                   trendValue="N/A"
-                  icon="star.fill"
+                  icon="star"
                   size="medium"
                   accentColor="#D97706"
                 />
@@ -542,7 +916,7 @@ export default function AuthorDashboard() {
                       subtitle={t('dashboard.topPositionSubtitle')}
                       trend="up"
                       trendValue="Top"
-                      icon="star.fill"
+                      icon="star"
                       size="small"
                     />
                   </View>
@@ -644,6 +1018,37 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  offlineContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  offlineIcon: {
+    marginBottom: 16,
+  },
+  offlineTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  offlineMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  offlineButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 999,
+  },
+  offlineButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',
@@ -1044,5 +1449,82 @@ const styles = StyleSheet.create({
   },
   mobileRightColumn: {
     flex: 1,
+  },
+
+  // Enhanced Chart Styles
+  enhancedChartCard: {
+    padding: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  enhancedChartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  chartTitleContainer: {
+    flex: 1,
+  },
+  enhancedChartTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  enhancedChartSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  timePeriodSelector: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+  },
+  timePeriodButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+    minWidth: 60,
+    justifyContent: 'center',
+  },
+  timePeriodText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  chartContainer: {
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  chartStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    paddingHorizontal: 8,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+    paddingHorizontal: 4,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 14,
+    minHeight: 14,
+    maxWidth: 100,
   },
 });
