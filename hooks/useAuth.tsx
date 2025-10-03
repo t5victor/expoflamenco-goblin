@@ -28,7 +28,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const savedSession = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
       if (savedSession) {
-        const session: AuthSession = JSON.parse(savedSession);
+        let session: AuthSession = JSON.parse(savedSession);
+
+        if (session?.token && !session.avatar) {
+          try {
+            const profile = await API_USERS.fetchUserProfile('root', session.token);
+            session = {
+              ...session,
+              name: profile.name ?? session.name,
+              email: profile.email ?? session.email,
+              roles: profile.roles ?? session.roles,
+              avatar: profile.avatar ?? session.avatar ?? null,
+            };
+            await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+          } catch (profileError) {
+            console.warn('Failed to refresh user profile on load:', profileError);
+          }
+        }
+
         setUser(session);
       }
     } catch (error) {
@@ -42,7 +59,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       // Login always happens against the root site (expoflamenco.com)
-      const session = await API_USERS.login('root', username, password);
+      let session = await API_USERS.login('root', username, password);
+
+      if (session.token && !session.avatar) {
+        try {
+          const profile = await API_USERS.fetchUserProfile('root', session.token);
+          session = {
+            ...session,
+            name: profile.name ?? session.name,
+            email: profile.email ?? session.email,
+            roles: profile.roles ?? session.roles,
+            avatar: profile.avatar ?? session.avatar ?? null,
+          };
+        } catch (profileError) {
+          console.warn('Failed to enrich user profile after login:', profileError);
+        }
+      }
 
       // Save session to storage
       await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));

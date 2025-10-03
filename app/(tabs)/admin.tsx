@@ -1,8 +1,8 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/hooks/useAuth';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageDropdown } from '@/components/LanguageDropdown';
@@ -14,6 +14,7 @@ import { fetchSiteData } from '@/services/api';
 import { getDateRangeFromTimeFilter, DASHBOARD_TIME_FILTERS, DashboardTimeFilter } from '@/utils/timeFilters';
 import { dataCacheKeys, getCachedData, setCachedData } from '@/services/dataCache';
 import { addPrefetchListener } from '@/services/prefetchManager';
+import { useRouter } from 'expo-router';
 
 // Using AuthorAnalytics interface from authorAnalytics service
 type DashboardData = AuthorAnalytics;
@@ -159,6 +160,7 @@ interface MetricCardProps {
   icon: keyof typeof Feather.glyphMap;
   size?: 'small' | 'medium' | 'large';
   accentColor?: string;
+  onPress?: () => void;
 }
 
 interface PostsCardProps {
@@ -171,12 +173,14 @@ interface RankingCardProps {
   posts: DashboardData['topPosts'];
   isDark: boolean;
   t: any;
+  onSelect: (postId: number) => void;
 }
 
 interface RecentActivityCardProps {
   posts: DashboardData['recentPosts'];
   isDark: boolean;
   t: any;
+  onSelect: (postId: number) => void;
 }
 
 interface StatsSummaryCardProps {
@@ -281,7 +285,8 @@ const MetricCard: React.FC<MetricCardProps> = ({
   trendValue,
   icon,
   size = 'medium',
-  accentColor = '#6B7280'
+  accentColor = '#6B7280',
+  onPress,
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -289,16 +294,22 @@ const MetricCard: React.FC<MetricCardProps> = ({
   const cardBackground = isDark ? '#111827' : '#FFFFFF';
   const iconBackground = isDark ? accentColor + '33' : accentColor + '1F';
 
+  const Container: React.ElementType = onPress ? TouchableOpacity : View;
+
   return (
-    <View style={[
-      styles.metricCard,
-      styles[`${size}Card`],
-      {
-        backgroundColor: cardBackground,
-        borderColor: accentColor + '25',
-        shadowColor: accentColor,
-      }
-    ]}>
+    <Container
+      activeOpacity={onPress ? 0.85 : 1}
+      onPress={onPress}
+      style={[
+        styles.metricCard,
+        styles[`${size}Card`],
+        {
+          backgroundColor: cardBackground,
+          borderColor: accentColor + '25',
+          shadowColor: accentColor,
+        }
+      ]}
+    >
       <View style={[styles.cardAccentBar, { backgroundColor: accentColor + '3D' }]} />
       <View style={styles.metricCardBody}>
         <View style={styles.metricHeaderRow}>
@@ -337,11 +348,11 @@ const MetricCard: React.FC<MetricCardProps> = ({
           </Text>
         )}
       </View>
-    </View>
+    </Container>
   );
 };
 
-const RankingCard: React.FC<RankingCardProps> = ({ posts, isDark, t }) => {
+const RankingCard: React.FC<RankingCardProps> = ({ posts, isDark, t, onSelect }) => {
   const topPosts = Array.isArray(posts) ? posts : [];
   const podium = topPosts.slice(0, 3);
   const others = topPosts.slice(3, 7);
@@ -355,22 +366,22 @@ const RankingCard: React.FC<RankingCardProps> = ({ posts, isDark, t }) => {
   const cardBackground = isDark ? '#111827' : '#FFFFFF';
   const borderColor = isDark ? '#1F2937' : '#E5E7EB';
 
-  const renderPodiumColumn = ({ rank, sourceIndex, height, accent }: typeof podiumSlots[number]) => {
-    const entry = podium[sourceIndex];
-    if (!entry || !entry.post) {
-      return (
-        <View key={rank} style={styles.podiumColumnEmpty}>
-          <View style={[styles.podiumBar, { height, backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]} />
-          <Text style={[styles.podiumLabel, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>#{rank}</Text>
-        </View>
-      );
-    }
+const renderPodiumColumn = ({ rank, sourceIndex, height, accent }: typeof podiumSlots[number]) => {
+  const entry = podium[sourceIndex];
+  if (!entry || !entry.post) {
+    return (
+      <View style={styles.podiumColumnEmpty}>
+        <View style={[styles.podiumBar, { height, backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]} />
+        <Text style={[styles.podiumLabel, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>#{rank}</Text>
+      </View>
+    );
+  }
 
     const title = entry.post.title?.rendered || t('dashboard.rankingEmpty');
     const viewsLabel = `${entry.views?.toLocaleString?.() || '0'} ${t('articles.views') || 'views'}`;
 
     return (
-      <View key={rank} style={styles.podiumColumn}>
+      <View style={styles.podiumColumnInner}>
         <View
           style={[
             styles.podiumBar,
@@ -412,9 +423,28 @@ const RankingCard: React.FC<RankingCardProps> = ({ posts, isDark, t }) => {
           <Text style={[styles.sectionLabel, { color: isDark ? '#D1D5DB' : '#6B7280' }]}>
             {t('dashboard.topPostViews')}
           </Text>
-          <View style={styles.podiumRow}>
-            {podiumSlots.map(renderPodiumColumn)}
-          </View>
+      <View style={styles.podiumRow}>
+        {podiumSlots.map((slot) => {
+          const entry = podium[slot.sourceIndex];
+          if (!entry || !entry.post) {
+            return (
+              <View key={`empty-${slot.rank}`} style={styles.podiumColumn}>
+                {renderPodiumColumn(slot)}
+              </View>
+            );
+          }
+          return (
+            <TouchableOpacity
+              key={slot.rank}
+              style={styles.podiumColumn}
+              activeOpacity={0.85}
+              onPress={() => onSelect(entry.post.id)}
+            >
+              {renderPodiumColumn(slot)}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
           {others.length > 0 && (
             <View style={styles.rankingList}>
@@ -422,7 +452,12 @@ const RankingCard: React.FC<RankingCardProps> = ({ posts, isDark, t }) => {
                 {t('dashboard.rankingOthers')}
               </Text>
               {others.map((entry, index) => (
-                <View key={entry.post?.id ?? index} style={styles.rankingRow}>
+                <TouchableOpacity
+                  key={entry.post?.id ?? index}
+                  style={styles.rankingRow}
+                  activeOpacity={0.85}
+                  onPress={() => entry.post?.id && onSelect(entry.post.id)}
+                >
                   <View style={[styles.rankingBadge, { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]}>
                     <Text style={[styles.rankingBadgeText, { color: isDark ? '#FFFFFF' : '#111827' }]}>
                       #{index + 4}
@@ -439,7 +474,7 @@ const RankingCard: React.FC<RankingCardProps> = ({ posts, isDark, t }) => {
                       {(entry.views || 0).toLocaleString()} {t('articles.views') || 'views'}
                     </Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           )}
@@ -456,7 +491,7 @@ const RankingCard: React.FC<RankingCardProps> = ({ posts, isDark, t }) => {
   );
 };
 
-const RecentActivityCard: React.FC<RecentActivityCardProps> = ({ posts, isDark, t }) => {
+const RecentActivityCard: React.FC<RecentActivityCardProps> = ({ posts, isDark, t, onSelect }) => {
   const recent = Array.isArray(posts) ? posts.slice(0, 5) : [];
   const cardBackground = isDark ? '#111827' : '#FFFFFF';
   const borderColor = isDark ? '#1F2937' : '#E5E7EB';
@@ -484,7 +519,12 @@ const RecentActivityCard: React.FC<RecentActivityCardProps> = ({ posts, isDark, 
       ) : (
         <View style={styles.activityList}>
           {recent.map((post) => (
-            <View key={post.id} style={styles.activityRow}>
+            <TouchableOpacity
+              key={post.id}
+              style={styles.activityRow}
+              activeOpacity={0.85}
+              onPress={() => onSelect(post.id)}
+            >
               <View
                 style={[
                   styles.activityBullet,
@@ -508,7 +548,7 @@ const RecentActivityCard: React.FC<RecentActivityCardProps> = ({ posts, isDark, 
                   })}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       )}
@@ -587,6 +627,20 @@ export default function AuthorDashboard() {
   const { user, logout } = useAuth();
   const isDark = colorScheme === 'dark';
   const userInteractionRef = useRef(false);
+  const router = useRouter();
+
+  const avatarUri = useMemo(() => {
+    const fallback = user?.avatar ?? '';
+    if (!fallback) return '';
+    if (Platform.OS === 'web') {
+      return fallback;
+    }
+    try {
+      return decodeURI(fallback);
+    } catch {
+      return fallback;
+    }
+  }, [user?.avatar]);
 
   const markUserInteraction = () => {
     userInteractionRef.current = true;
@@ -758,6 +812,17 @@ export default function AuthorDashboard() {
     label: filter,
   }));
 
+  const openPostDetails = useCallback(
+    (postId: number) => {
+      if (!postId) return;
+      router.push({
+        pathname: '/article/[id]',
+        params: { id: String(postId), period: timeFilter },
+      });
+    },
+    [router, timeFilter]
+  );
+
   const showOffline = hasAuthorError || hasMetricsError;
 
   if (loading) {
@@ -863,26 +928,37 @@ export default function AuthorDashboard() {
             {/* Header */}
             <View style={[styles.header, isMobile && styles.mobileHeader]}>
               <View style={styles.headerLeft}>
-                <Text style={[
-                  styles.headerTitle,
-                  { color: isDark ? '#FFFFFF' : '#111827' }
-                ]}>
-                  {user?.name || t('dashboard.title')}
-                </Text>
-                <Text style={[
-                  styles.headerSubtitle,
-                  { color: isDark ? '#9CA3AF' : '#6B7280' }
-                ]}>
-                  {t('dashboard.subtitle')}
-                </Text>
-                {data.totalViews === 0 && data.totalPosts > 0 && (
-                  <Text style={[
-                    styles.analyticsNotice,
-                    { color: isDark ? '#F59E0B' : '#D97706' }
-                  ]}>
-                    {t('dashboard.analyticsNotice')}
-                  </Text>
-                )}
+                <View style={styles.headerIdentityRow}>
+                  {avatarUri ? (
+                    <Image
+                      source={{ uri: avatarUri }}
+                      style={styles.headerAvatar}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.headerAvatarFallback,
+                        { backgroundColor: isDark ? '#1F2937' : '#F3F4F6' },
+                      ]}
+                    >
+                      <Feather name="user" size={18} color={isDark ? '#F9FAFB' : '#111827'} />
+                    </View>
+                  )}
+                  <View style={styles.headerTextGroup}>
+                    <Text style={[
+                      styles.headerTitle,
+                      { color: isDark ? '#FFFFFF' : '#111827' }
+                    ]}>
+                      {user?.name || t('dashboard.title')}
+                    </Text>
+                    <Text style={[
+                      styles.headerSubtitle,
+                      { color: isDark ? '#9CA3AF' : '#6B7280' }
+                    ]}>
+                      {t('dashboard.subtitle')}
+                    </Text>
+                  </View>
+                </View>
               </View>
 
               <View style={[styles.headerActions, isMobile && styles.mobileHeaderActions]}>
@@ -1123,17 +1199,18 @@ export default function AuthorDashboard() {
                   icon="star"
                   size="medium"
                   accentColor="#D97706"
+                  onPress={data.topPosts.length > 0 ? () => openPostDetails(data.topPosts[0].post.id) : undefined}
                 />
               </View>
 
               {/* Chart and Secondary Metrics */}
               <View style={[styles.contentRow, isMobile && styles.mobileContentRow]}>
                 <View style={[styles.leftColumn, isMobile && styles.mobileLeftColumn]}>
-                  <RankingCard posts={data.topPosts} isDark={isDark} t={t} />
+                  <RankingCard posts={data.topPosts} isDark={isDark} t={t} onSelect={openPostDetails} />
                 </View>
 
                 <View style={[styles.rightColumn, isMobile && styles.mobileRightColumn]}>
-                  <RecentActivityCard posts={data.recentPosts} isDark={isDark} t={t} />
+                  <RecentActivityCard posts={data.recentPosts} isDark={isDark} t={t} onSelect={openPostDetails} />
                   <StatsSummaryCard data={data} isDark={isDark} t={t} />
                 </View>
               </View>
@@ -1199,19 +1276,36 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
+    gap: 12,
+  },
+  headerIdentityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  headerAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+  },
+  headerAvatarFallback: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTextGroup: {
+    flex: 1,
+    gap: 4,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    marginBottom: 4,
+    letterSpacing: -0.2,
   },
   headerSubtitle: {
     fontSize: 14,
-  },
-  analyticsNotice: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    marginTop: 4,
   },
   siteSection: {
     marginTop: 16,
@@ -1417,6 +1511,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  podiumColumnInner: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 8,
+  },
   podiumColumnEmpty: {
     flex: 1,
     alignItems: 'center',
@@ -1466,10 +1565,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  rankingBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
   },
   rankingBadgeText: {
     fontSize: 13,

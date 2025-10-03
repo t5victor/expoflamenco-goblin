@@ -339,7 +339,8 @@ export default function SettingsScreen() {
             styles.footerText,
             { color: isDark ? '#6B7280' : '#9CA3AF' }
           ]}>
-            INTERNAL PROJECT GOBLIN v0.9
+            INTERNAL PROJECT GOBLIN{'\n'}
+            RELEASE CANDIDATE (X10R)
           </Text>
         </View>
       </ScrollView>

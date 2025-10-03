@@ -27,12 +27,26 @@ export interface AuthSession {
   name: string;
   email: string | null;
   roles?: string[];
+  avatar?: string | null;
 }
 
 export interface DateRange {
   from?: string; // ISO 8601 "YYYY-MM-DD"
   to?: string;   // ISO 8601 "YYYY-MM-DD"
 }
+
+const extractAvatar = (payload?: {
+  avatar_urls?: Record<string, string>;
+  simple_local_avatar?: { full?: string; [key: string]: any };
+}): string | null => {
+  if (!payload) return null;
+  const fromAvatar = payload.avatar_urls?.['96'] || payload.avatar_urls?.['72'] || payload.avatar_urls?.['48'] || payload.avatar_urls?.['24'];
+  const fromSimple =
+    (typeof payload.simple_local_avatar?.['96'] === 'string' && (payload.simple_local_avatar?.['96'] as string)) ||
+    (typeof payload.simple_local_avatar?.full === 'string' && payload.simple_local_avatar?.full) ||
+    null;
+  return fromAvatar || fromSimple || null;
+};
 
 export interface PostLite {
   id: number;
@@ -41,6 +55,22 @@ export interface PostLite {
   slug: string;
   title: { rendered: string };
   link: string;
+}
+
+export interface PostDetail extends PostLite {
+  excerpt?: string;
+  authorName?: string;
+}
+
+export interface PostHitEntry {
+  date: string;
+  views: number;
+}
+
+export interface PostReferrerEntry {
+  title: string;
+  count: number;
+  url?: string;
 }
 
 export interface PostViewStat {
@@ -72,10 +102,10 @@ type StatsRoutes = {
 const defaultStatsRoutes: StatsRoutes = {
   viewsByPost: (postId: number, range?: DateRange) => {
     const qs = new URLSearchParams();
-    if (range?.from) qs.set("rangestartdate", range.from);
-    if (range?.to) qs.set("rangeenddate", range.to);
-    qs.set("page-id", String(postId));
-    // Use the pages endpoint which exists
+    if (range?.from) qs.set('rangestartdate', range.from);
+    if (range?.to) qs.set('rangeenddate', range.to);
+    qs.set('object-id', String(postId));
+    qs.set('page-type', 'post');
     return `/wp-json/wpstatistics/v1/pages?${qs.toString()}`;
   },
   aggregateByAuthor: undefined, // WP Statistics doesn't have an author aggregate endpoint
@@ -257,10 +287,15 @@ export class ApiUsers {
       name: string;
       email?: string;
       roles?: string[];
+      avatar_urls?: Record<string, string>;
+      simple_local_avatar?: {
+        full?: string;
+        [key: string]: string | number | undefined;
+      };
     };
 
     try {
-      const me = await this.jsonFetch<Me>(site, `/wp-json/wp/v2/users/me`, {
+      const me = await this.jsonFetch<Me>(site, `/wp-json/wp/v2/users/me?_fields=id,name,email,roles,avatar_urls,simple_local_avatar`, {
         token: tokenResp.token!,
       });
 
@@ -270,18 +305,59 @@ export class ApiUsers {
         name: me.name,
         email: me.email ?? null,
         roles: me.roles,
+        avatar: extractAvatar(me),
       };
     } catch (meError) {
       // Si falla /users/me, intentamos obtener info del token
       console.log('⚠️ No se pudo obtener info de /users/me, usando datos del token');
+      let fallbackAvatar: string | null = null;
+      if (tokenResp.user_id) {
+        try {
+          const userFallback = await this.jsonFetch<Me>(site, `/wp-json/wp/v2/users/${tokenResp.user_id}?_fields=id,name,email,roles,avatar_urls,simple_local_avatar`, {
+            token: tokenResp.token!,
+          });
+          fallbackAvatar = extractAvatar(userFallback);
+        } catch (userFallbackError) {
+          console.log('⚠️ No se pudo obtener avatar mediante /users/{id}', userFallbackError);
+        }
+      }
       return {
         token: tokenResp.token!,
         userId: tokenResp.user_id || 0,
         name: tokenResp.user_display_name || username,
         email: tokenResp.user_email || null,
         roles: [],
+        avatar: fallbackAvatar,
       };
     }
+  }
+
+  async fetchUserProfile(
+    site: SiteKey,
+    token: string
+  ): Promise<{ id: number; name?: string; email?: string | null; roles?: string[]; avatar?: string | null }> {
+    type ProfileResponse = {
+      id: number;
+      name?: string;
+      email?: string | null;
+      roles?: string[];
+      avatar_urls?: Record<string, string>;
+      simple_local_avatar?: { full?: string; [key: string]: any };
+    };
+
+    const profile = await this.jsonFetch<ProfileResponse>(
+      site,
+      `/wp-json/wp/v2/users/me?_fields=id,name,email,roles,avatar_urls,simple_local_avatar`,
+      { token }
+    );
+
+    return {
+      id: profile.id,
+      name: profile.name,
+      email: profile.email ?? null,
+      roles: profile.roles,
+      avatar: extractAvatar(profile),
+    };
   }
 
   /** Posts del autor en REST nativo. Ajusta per_page según necesidades. */
@@ -302,32 +378,157 @@ export class ApiUsers {
     return this.jsonFetch<PostLite[]>(site, `/wp-json/wp/v2/posts?${qs.toString()}`);
   }
 
+  async fetchPostById(site: SiteKey, postId: number): Promise<PostDetail> {
+    const post = await this.jsonFetch<any>(
+      site,
+      `/wp-json/wp/v2/posts/${postId}?_embed=author&_fields=id,date,modified,slug,title,link,excerpt,_embedded`
+    );
+
+    const excerpt = typeof post?.excerpt?.rendered === 'string'
+      ? post.excerpt.rendered.replace(/<[^>]+>/g, '').trim()
+      : undefined;
+
+    const authorName = post?._embedded?.author?.[0]?.name;
+
+    return {
+      id: post.id,
+      date: post.date,
+      modified: post.modified,
+      slug: post.slug,
+      title: post.title,
+      link: post.link,
+      excerpt,
+      authorName,
+    };
+  }
+
+  private computeDaysFromRange(range?: DateRange): number | undefined {
+    if (!range?.from || !range?.to) return undefined;
+    const from = new Date(`${range.from}T00:00:00`);
+    const to = new Date(`${range.to}T23:59:59`);
+    const diff = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : undefined;
+  }
+
+  async fetchPostHits(
+    site: SiteKey,
+    postId: number,
+    range?: DateRange
+  ): Promise<PostHitEntry[]> {
+    const params = new URLSearchParams();
+    params.set('token_auth', '1805');
+    params.set('page-type', 'post');
+    params.set('object-id', String(postId));
+    const days = this.computeDaysFromRange(range);
+    if (days && !Number.isNaN(days)) {
+      params.set('days', String(days));
+    }
+
+    const statsSites: SiteKey[] = site === 'root' ? ['root'] : [site, 'root'];
+
+    for (const statsSite of statsSites) {
+      try {
+        const response = await this.jsonFetch<any>(statsSite, `/wp-json/wpstatistics/v1/hits?${params.toString()}`);
+        if (Array.isArray(response)) {
+          return response.map((entry) => ({
+            date: String(entry?.date ?? ''),
+            views: Number(entry?.visitor ?? entry?.count ?? entry?.views ?? entry?.visit ?? 0) || 0,
+          }));
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+
+    return [];
+  }
+
+  async fetchPostReferrers(
+    site: SiteKey,
+    postId: number,
+    range?: DateRange
+  ): Promise<PostReferrerEntry[]> {
+    const params = new URLSearchParams();
+    params.set('token_auth', '1805');
+    params.set('object-id', String(postId));
+    params.set('limit', '10');
+    if (range?.from) params.set('rangestartdate', range.from);
+    if (range?.to) params.set('rangeenddate', range.to);
+
+    const statsSites: SiteKey[] = site === 'root' ? ['root'] : [site, 'root'];
+
+    for (const statsSite of statsSites) {
+      try {
+        const response = await this.jsonFetch<any>(statsSite, `/wp-json/wpstatistics/v1/referrers?${params.toString()}`);
+        if (Array.isArray(response)) {
+          return response.map((entry) => ({
+            title: String(entry?.title ?? entry?.referred ?? entry?.referrer ?? 'Unknown'),
+            count: Number(entry?.count ?? entry?.number ?? entry?.total ?? 0) || 0,
+            url: typeof entry?.link === 'string' ? entry.link : undefined,
+          }));
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+
+    return [];
+  }
+
   /** Vistas por post - intenta múltiples fuentes */
   async fetchViewsForPost(
     site: SiteKey,
     postId: number,
     range?: DateRange,
-    token?: string
+    token?: string,
+    metaSite?: SiteKey
   ): Promise<PostViewStat> {
     try {
-      // First try: WP Statistics (if available)
+      // First try: WP Statistics (prefer root site data)
       const path = this.statsRoutes.viewsByPost(postId, range);
       const fullPath = `${path}&token_auth=1805`;
-      try {
-        const raw = await this.jsonFetch<any>(site, fullPath);
-        if (raw && typeof raw === 'number') {
-          return { postId, views: raw };
+
+      const parseWpStatsPayload = (payload: any): number => {
+        if (Array.isArray(payload)) {
+          return payload.reduce((sum, entry) => sum + Number(entry?.visitor ?? entry?.visit ?? entry?.count ?? entry?.views ?? 0), 0);
         }
-        if (raw?.views) {
-          return { postId, views: Number(raw.views) };
+        if (typeof payload === 'number') {
+          return payload;
         }
-      } catch (wpStatsError) {
-        // WP Statistics failed, try other sources
+        if (payload && typeof payload === 'object') {
+          if (payload.visitor !== undefined) {
+            return Number(payload.visitor) || 0;
+          }
+          if (payload.visit !== undefined) {
+            return Number(payload.visit) || 0;
+          }
+          if (payload.count !== undefined) {
+            return Number(payload.count) || 0;
+          }
+          if (payload.views !== undefined) {
+            return Number(payload.views) || 0;
+          }
+        }
+        return 0;
+      };
+
+      const statsSites: SiteKey[] = site === 'root' ? ['root'] : [site, 'root'];
+      for (const statsSite of statsSites) {
+        try {
+          const raw = await this.jsonFetch<any>(statsSite, fullPath);
+          const totalViews = parseWpStatsPayload(raw);
+          if (totalViews > 0) {
+            return { postId, views: totalViews };
+          }
+        } catch (wpStatsError) {
+          // Keep trying other sources
+        }
       }
 
       // Second try: WordPress post meta (JNews, Post Views Counter, etc.)
+      const restSite: SiteKey = metaSite ?? site;
       try {
-        const postData = await this.jsonFetch<any>(site, `/wp-json/wp/v2/posts/${postId}?_fields=id,meta`, {
+        const postData = await this.jsonFetch<any>(restSite, `/wp-json/wp/v2/posts/${postId}?_fields=id,meta`, {
           token: token // Use JWT token for authenticated access
         });
 
@@ -353,23 +554,6 @@ export class ApiUsers {
         // Post meta access failed
       }
 
-      // Third try: WP Statistics on root domain (for revista posts)
-      if (site === 'revista') {
-        try {
-          // Try to get data from root domain WP Statistics
-          const rootPath = `/wp-json/wpstatistics/v1/pages?token_auth=1805&object-id=${postId}`;
-          const rootRaw = await this.jsonFetch<any>('root', rootPath);
-          if (Array.isArray(rootRaw) && rootRaw.length > 0) {
-            const totalViews = rootRaw.reduce((sum, entry) => sum + Number(entry.count || 0), 0);
-            if (totalViews > 0) {
-              return { postId, views: totalViews };
-            }
-          }
-        } catch (rootError) {
-          // Root domain access failed
-        }
-      }
-
     } catch (error) {
       // All methods failed
     }
@@ -379,9 +563,7 @@ export class ApiUsers {
   }
 
   /**
-   * Resumen agregado por autor.
-   * Nota: WP Statistics REST API no proporciona analytics individuales por autor.
-   * Esta función devuelve datos básicos disponibles (post count) y 0 para métricas no disponibles.
+   * Resumen agregado por autor combinando WP Statistics y metadatos REST.
    */
   async getUserStatsSummary(
     site: SiteKey,
@@ -389,32 +571,49 @@ export class ApiUsers {
     range?: DateRange,
     opts?: { limitTop?: number; token?: string }
   ): Promise<UserStatsSummary> {
-    // Get posts for this author to provide basic statistics
-    const allPosts = await this.fetchPostsByAuthor(site, authorId, { perPage: 100 });
+    let posts = await this.fetchPostsByAuthor(site, authorId, { perPage: 100 });
 
-    // Filter posts by date range on client side to ensure it works
-    const posts = range
-      ? allPosts.filter(post => {
-          const postDate = new Date(post.date);
-          const fromDate = range.from ? new Date(range.from + 'T00:00:00') : null;
-          const toDate = range.to ? new Date(range.to + 'T23:59:59') : null;
-          return (!fromDate || postDate >= fromDate) && (!toDate || postDate <= toDate);
+    const postEntries = posts.filter((post) => {
+      if (!range) return true;
+      const postDate = new Date(post.date);
+      const fromDate = range.from ? new Date(range.from + 'T00:00:00') : null;
+      const toDate = range.to ? new Date(range.to + 'T23:59:59') : null;
+      return (!fromDate || postDate >= fromDate) && (!toDate || postDate <= toDate);
+    });
+
+    const viewEntries: Array<{ post: PostLite; views: number }> = [];
+    const chunkSize = 10;
+    for (let index = 0; index < postEntries.length; index += chunkSize) {
+      const chunk = postEntries.slice(index, index + chunkSize);
+      const resolved = await Promise.all(
+        chunk.map(async (post) => {
+          try {
+            const stat = await this.fetchViewsForPost(site, post.id, range, opts?.token, site === 'root' ? 'root' : site);
+            return { post, views: stat?.views ?? 0 };
+          } catch (error) {
+            console.warn(`Failed to load views for post ${post.id}:`, error);
+            return { post, views: 0 };
+          }
         })
-      : allPosts;
+      );
+      viewEntries.push(...resolved);
+    }
 
-    // Create top posts list with 0 views (since individual analytics aren't available)
-    const topPosts = posts
-      .map((p) => ({
-        post: p,
-        views: 0, // WP Statistics doesn't provide individual post analytics
-      }))
-      .sort((a, b) => new Date(b.post.date).getTime() - new Date(a.post.date).getTime()) // Sort by date instead
+    const totalViews = viewEntries.reduce((total, entry) => total + (entry.views || 0), 0);
+
+    const topPosts = [...viewEntries]
+      .sort((a, b) => {
+        if (b.views !== a.views) {
+          return b.views - a.views;
+        }
+        return new Date(b.post.date).getTime() - new Date(a.post.date).getTime();
+      })
       .slice(0, opts?.limitTop ?? 10);
 
     return {
       userId: authorId,
-      totalViews: 0, // Individual post analytics not available
-      postsCount: posts.length,
+      totalViews,
+      postsCount: postEntries.length,
       topPosts,
       range,
     };

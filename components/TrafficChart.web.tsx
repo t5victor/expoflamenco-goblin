@@ -100,6 +100,33 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
   };
 
   const chartData = getChartData();
+  const desiredTickCount = isMobile ? 4 : 6;
+  const xAxisTicks = (() => {
+    if (chartData.length === 0) {
+      return [] as string[];
+    }
+
+    if (chartData.length <= desiredTickCount) {
+      return chartData.map((point) => point.name);
+    }
+
+    const ticks: string[] = [];
+    const step = Math.max(1, Math.floor(chartData.length / (desiredTickCount - 1)));
+
+    for (let index = 0; index < chartData.length; index += step) {
+      const label = chartData[index].name;
+      if (ticks[ticks.length - 1] !== label) {
+        ticks.push(label);
+      }
+    }
+
+    const lastLabel = chartData[chartData.length - 1].name;
+    if (ticks[ticks.length - 1] !== lastLabel) {
+      ticks.push(lastLabel);
+    }
+
+    return ticks;
+  })();
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#1F2937' : 'white' }]}>
@@ -124,6 +151,9 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
             />
             <XAxis 
               dataKey="name" 
+              ticks={xAxisTicks}
+              interval={0}
+              allowDuplicatedCategory={false}
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 12, fill: isDark ? '#9CA3AF' : '#6B7280', fontFamily: 'System' }}

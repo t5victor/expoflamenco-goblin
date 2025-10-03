@@ -38,6 +38,7 @@ function AppContent() {
   return (
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="article/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

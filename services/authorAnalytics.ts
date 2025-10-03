@@ -1,5 +1,6 @@
-import { createApiUsers, ApiUsers, UserStatsSummary, PostLite, DateRange } from './apiUsers';
+import { createApiUsers, ApiUsers, UserStatsSummary, PostLite, DateRange, PostDetail, PostHitEntry, PostReferrerEntry } from './apiUsers';
 import { Platform } from 'react-native';
+import { getDateRangeFromTimeFilter } from '@/utils/timeFilters';
 
 // Simple historical data storage - only use localStorage on web
 const getComparisonData = async (userId: number, timePeriod: string, currentMetrics: any) => {
@@ -222,7 +223,7 @@ export class AuthorAnalyticsService {
     userId: number,
     token: string,
     params?: { page?: number; perPage?: number; after?: string; before?: string }
-  ): Promise<Array<PostLite & { views: number; engagement: number }>> {
+  ): Promise<Array<PostLite & { views: number; engagement: number; viewShare: number; viewsPerDay: number }>> {
     try {
       const posts = await this.apiUsers.fetchPostsByAuthor('revista', userId, params);
 
@@ -238,11 +239,56 @@ export class AuthorAnalyticsService {
         })
       );
 
-      return postsWithAnalytics.sort((a, b) => b.views - a.views);
+      const totalViews = postsWithAnalytics.reduce((sum, item) => sum + (item.views || 0), 0);
+      const averageViews = postsWithAnalytics.length > 0 ? totalViews / postsWithAnalytics.length : 0;
+
+      const normalized = postsWithAnalytics.map((item) => {
+        const publishedAt = new Date(item.date);
+        const daysSincePublished = Math.max(
+          1,
+          (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        return {
+          ...item,
+          engagement: averageViews > 0 ? (item.views / averageViews) * 100 : 0,
+          viewShare: totalViews > 0 ? (item.views / totalViews) * 100 : 0,
+          viewsPerDay: item.views / daysSincePublished,
+        };
+      });
+
+      return normalized.sort((a, b) => b.views - a.views);
     } catch (error) {
       console.error(`Error fetching author posts with analytics for ${userId}:`, error);
       return [];
     }
+  }
+
+  async getPostDetailAnalytics(
+    postId: number,
+    timePeriod: string,
+    token: string
+  ): Promise<{
+    post: PostDetail;
+    totalViews: number;
+    dailyViews: PostHitEntry[];
+    referrers: PostReferrerEntry[];
+    timePeriod: string;
+  }> {
+    const dateRange = getDateRangeFromTimeFilter(timePeriod as any) ?? undefined;
+
+    const post = await this.apiUsers.fetchPostById('revista', postId);
+    const views = await this.apiUsers.fetchViewsForPost('revista', postId, dateRange, token, 'revista');
+    const dailyViews = await this.apiUsers.fetchPostHits('revista', postId, dateRange);
+    const referrers = await this.apiUsers.fetchPostReferrers('revista', postId, dateRange);
+
+    return {
+      post,
+      totalViews: views.views,
+      dailyViews,
+      referrers,
+      timePeriod,
+    };
   }
 }
 
