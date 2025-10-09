@@ -12,7 +12,7 @@ import LoginScreen from '@/screens/LoginScreen';
 import { usePrefetchScheduler } from '@/hooks/usePrefetchScheduler';
 
 function AppContent() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, isAdmin } = useAuth();
 
   usePrefetchScheduler(
     user
@@ -35,10 +35,22 @@ function AppContent() {
     return <LoginScreen />;
   }
 
+  if (isAdmin) {
+    return (
+      <Stack initialRouteName="admin-dashboard">
+        <Stack.Screen name="admin-dashboard" options={{ headerShown: false }} />
+        <Stack.Screen name="article/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="user/[slug]" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+    );
+  }
+
   return (
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="article/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="user/[slug]" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

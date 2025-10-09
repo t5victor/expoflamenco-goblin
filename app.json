@@ -8,6 +8,11 @@
     "scheme": "expogoblin",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-black.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#000000"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.expoflamenco.goblin",
@@ -19,15 +24,25 @@
         "light": "./assets/icons/LogoAppIOS.png",
         "dark": "./assets/icons/LogoAppIOS.png",
         "tinted": "./assets/icons/LogoAppIOS.png"
+      },
+      "splash": {
+        "image": "./assets/images/splash-black.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#000000"
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/EX-PO.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.expoflamenco.goblin"
+      "package": "com.expoflamenco.goblin",
+      "splash": {
+        "image": "./assets/images/splash-black.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#000000"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -45,10 +60,9 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "image": "./assets/images/splash-black.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#000000"
         }
       ]
     ],

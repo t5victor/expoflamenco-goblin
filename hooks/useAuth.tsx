@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createApiUsers, AuthSession, SiteKey } from '@/services/apiUsers';
 
@@ -8,6 +8,7 @@ interface AuthContextType {
   login: (username: string, password: string, site?: SiteKey) => Promise<boolean>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -98,12 +99,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const isAdmin = useMemo(() => {
+    if (!user?.roles) {
+      return false;
+    }
+    return user.roles.some((role) =>
+      typeof role === 'string'
+        ? ['administrator', 'super_admin', 'super admin'].includes(role.toLowerCase())
+        : false
+    );
+  }, [user?.roles]);
+
   const value: AuthContextType = {
     user,
     isLoading,
     login,
     logout,
     isAuthenticated: !!user,
+    isAdmin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
