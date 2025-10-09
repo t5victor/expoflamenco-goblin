@@ -129,7 +129,7 @@ export default function WelcomeScreen() {
                 ]}
               />
               <AnimatedImage
-                source={require("../assets/images/EX-PO.png")}
+                source={require("../assets/images/Gu2.png")}
                 style={[
                   styles.pulseImage,
                   {
